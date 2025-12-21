@@ -3,7 +3,11 @@ package com.va.v.v_app.web.rest.controller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.va.v.v_app.model.UserDetailsBean;
 import com.va.v.v_app.service.CheckLoginService;
+import com.va.v.v_app.service.KeycloakUserService;
+import com.va.v.v_app.web.rest.annotation.UserDetailsApiResponses;
+import com.va.v.v_app.web.rest.annotation.UserListApiResponses;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.extern.slf4j.Slf4j;
 import org.keycloak.common.VerificationException;
@@ -28,6 +32,9 @@ public class LoginController {
     @Autowired
     private CheckLoginService loginService;
 
+    @Autowired
+    private KeycloakUserService keycloakUserService;
+
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String TXN_ID_HEADER = "txnId";
     private static final String USER_ID_HEADER = "userId";
@@ -38,7 +45,11 @@ public class LoginController {
     private static final String LANGUAGE_ID_HEADER = "languageId";
 
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(description = "Login User With Keycloak Token - Validates token and returns user details with role-based menus")
+    @Operation(summary = "Validate Keycloak Token and Get User Details", description = "Login User With Keycloak Token - Validates token and returns user details with role-based menus. "
+            +
+            "Requires a valid JWT token in the Authorization header.")
+    @UserDetailsApiResponses
+    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> checkLogin()
             throws URISyntaxException, VerificationException, JsonProcessingException {
         log.info("Check Login Method For token: {}", MDC.get(AUTHORIZATION_HEADER));
@@ -81,17 +92,50 @@ public class LoginController {
     }
 
     @GetMapping(value = "getUserDetailsByUserName", produces = MediaType.APPLICATION_JSON_VALUE)
-    @Operation(description = "Get User Details with User Name")
+    @Operation(summary = "Get User Details by Username from Keycloak DB", description = "Retrieves user details from Keycloak database using the provided username. "
+            +
+            "If username is not provided, returns all users. Requires authentication.")
+    @UserListApiResponses
+    @SecurityRequirement(name = "Bearer Authentication")
     public ResponseEntity<Object> getUserDetailsByUserName(
-            @RequestParam(value = "userName", required = true) String userName) {
-        log.info("Get User Details Method For User Name: {}", userName);
+            @RequestParam(value = "userName", required = false) String userName) {
 
-        UserDetailsBean userDetailsBean = loginService.loadByUserName(userName);
+        if (userName != null && !userName.trim().isEmpty()) {
+            log.info("Get User Details from Keycloak DB for User Name: {}", userName);
 
-        if (userDetailsBean == null) {
-            return new ResponseEntity<>("User Details Not Found", HttpStatus.NOT_FOUND);
+            UserDetailsBean userDetailsBean = keycloakUserService.getUserByUsername(userName.trim());
+
+            if (userDetailsBean == null) {
+                return new ResponseEntity<>("User Details Not Found in Keycloak Database", HttpStatus.NOT_FOUND);
+            }
+
+            return new ResponseEntity<>(userDetailsBean, HttpStatus.OK);
+        } else {
+            log.info("Get All Users from Keycloak DB");
+
+            List<UserDetailsBean> allUsers = keycloakUserService.getAllUsers();
+
+            if (allUsers == null || allUsers.isEmpty()) {
+                return new ResponseEntity<>("No Users Found in Keycloak Database", HttpStatus.NOT_FOUND);
+            }
+
+            return new ResponseEntity<>(allUsers, HttpStatus.OK);
+        }
+    }
+
+    @GetMapping(value = "getAllUsers", produces = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Get All Users from Keycloak DB", description = "Retrieves all user details from Keycloak database. Requires authentication.")
+    @UserDetailsApiResponses
+    @SecurityRequirement(name = "Bearer Authentication")
+    public ResponseEntity<Object> getAllUsers() {
+        log.info("Get All Users from Keycloak DB");
+
+        List<UserDetailsBean> allUsers = keycloakUserService.getAllUsers();
+
+        if (allUsers == null || allUsers.isEmpty()) {
+            return new ResponseEntity<>("No Users Found in Keycloak Database", HttpStatus.NOT_FOUND);
         }
 
-        return new ResponseEntity<>(userDetailsBean, HttpStatus.OK);
+        return new ResponseEntity<>(allUsers, HttpStatus.OK);
     }
 }

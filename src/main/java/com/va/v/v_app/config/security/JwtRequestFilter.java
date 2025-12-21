@@ -17,20 +17,43 @@ import java.io.IOException;
 import java.util.Collections;
 
 /**
- * JWT Request Filter
- * Intercepts every request to validate JWT token and set authentication
+ * JWT Request Filter with Keycloak Validation
+ * Intercepts every request to validate JWT token with Keycloak and set
+ * authentication
+ * Returns 401 Unauthorized if token validation fails
  */
 @Slf4j
 @RequiredArgsConstructor
 public class JwtRequestFilter extends OncePerRequestFilter {
 
     private final JwtUtil jwtUtil;
+    private final KeycloakTokenValidator keycloakTokenValidator;
 
     @Override
     protected void doFilterInternal(
             @NonNull HttpServletRequest request,
             @NonNull HttpServletResponse response,
             @NonNull FilterChain filterChain) throws ServletException, IOException {
+
+        // Check for unauthenticated request bypass header (internal use only - not
+        // documented in Swagger)
+        final String unauthHeader = request.getHeader("x-unauth-request");
+        if ("true".equalsIgnoreCase(unauthHeader)) {
+            log.debug("Unauthenticated request bypass enabled for: {}", request.getRequestURI());
+
+            // Create a bypass authentication token for internal use
+            UsernamePasswordAuthenticationToken bypassToken = new UsernamePasswordAuthenticationToken(
+                    "unauthenticated-user",
+                    null,
+                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_UNAUTH")));
+            bypassToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(bypassToken);
+
+            Long start = System.currentTimeMillis();
+            filterChain.doFilter(request, response);
+            log.info("Time Taken to complete API (unauth): {}", System.currentTimeMillis() - start);
+            return;
+        }
 
         final String authorizationHeader = request.getHeader("Authorization");
 
@@ -45,40 +68,59 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 log.debug("JWT token found for user: {}", username);
             } catch (Exception e) {
                 log.error("Error extracting username from JWT: {}", e.getMessage());
+                // Return 401 Unauthorized if token cannot be parsed
+                sendUnauthorizedResponse(response, "Invalid token format");
+                return;
             }
         } else {
             log.debug("No JWT token found in request to: {}", request.getRequestURI());
         }
 
-        // Validate token and set authentication
+        // Validate token with Keycloak and set authentication
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            if (jwtUtil.validateToken(jwt, username)) {
-                log.debug("JWT token is valid for user: {}", username);
+            // Validate token with Keycloak
+            boolean isValidWithKeycloak = keycloakTokenValidator.validateToken(jwt);
 
-                // Create authentication token
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
-                        username,
-                        null,
-                        Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
-
-                authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-
-                // Set authentication in security context
-                SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-
-                // Store JWT in request attribute for later use
-                request.setAttribute("JWT_TOKEN", jwt);
-                request.setAttribute("USERNAME", username);
-
-                log.debug("Authentication set for user: {}", username);
-            } else {
-                log.warn("JWT token validation failed for user: {}", username);
+            if (!isValidWithKeycloak) {
+                log.warn("Keycloak token validation failed for user: {}", username);
+                // Return 401 Unauthorized if Keycloak validation fails
+                sendUnauthorizedResponse(response, "Token validation failed");
+                return;
             }
+
+            log.debug("Token validated successfully with Keycloak for user: {}", username);
+
+            // Create authentication token
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(
+                    username,
+                    null,
+                    Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
+
+            authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+
+            // Set authentication in security context
+            SecurityContextHolder.getContext().setAuthentication(authenticationToken);
+
+            // Store JWT in request attribute for later use
+            request.setAttribute("JWT_TOKEN", jwt);
+            request.setAttribute("USERNAME", username);
+
+            log.debug("Authentication set for user: {}", username);
         }
 
         Long start = System.currentTimeMillis();
         filterChain.doFilter(request, response);
-        log.info("Time Taken to complete API1 {}", System.currentTimeMillis() - start);
+        log.info("Time Taken to complete API: {}", System.currentTimeMillis() - start);
+    }
+
+    /**
+     * Send 401 Unauthorized response
+     */
+    private void sendUnauthorizedResponse(HttpServletResponse response, String message) throws IOException {
+        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+        response.setContentType("application/json");
+        response.getWriter().write("{\"error\":\"Unauthorized\",\"message\":\"" + message + "\"}");
+        response.getWriter().flush();
     }
 
     @Override

@@ -31,7 +31,7 @@ WORKDIR /app
 COPY --from=builder /app/target/v-app-0.0.1-SNAPSHOT.jar app.jar
 
 # Expose the port the app runs on
-EXPOSE 8080
+EXPOSE 2000
 
 # Set environment variables
 ENV JAVA_OPTS=""

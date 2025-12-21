@@ -21,4 +21,5 @@ public class DataSourceConfiguration implements Serializable {
 
 	private List<DatasourceProperties> crmdatasource;
 	private List<DatasourceProperties> billingdatasource;
+	private List<DatasourceProperties> keycloakdatasource;
 }

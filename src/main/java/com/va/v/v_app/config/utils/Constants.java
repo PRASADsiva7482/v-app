@@ -105,5 +105,6 @@ public interface Constants {
 
 	public static final String crm_db_instance = "crm-db-instance";
 	public static final String bill_db_instance = "bill-db-instance";
+	public static final String keycloak_db_instance = "keycloak-db-instance";
 	public static final String initial_db_name = "initial";
 }

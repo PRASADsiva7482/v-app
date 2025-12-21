@@ -42,6 +42,18 @@ public class DatasourceMap {
 		return dataSourceMap;
 	}
 
+	@Bean(name = "keycloakdataSourceMap")
+	public Map<String, HikariDataSource> dataKeycloakSourceMap() {
+		Map<String, HikariDataSource> dataSourceMap = new HashMap<>();
+		dataSourceConfiguration.getKeycloakdatasource()
+				.forEach(dbProp -> {
+					dataSourceMap.put(dbProp.getName(), createDataSource(dbProp));
+					log.info("Created Keycloak datasource: {} with pool: {}", dbProp.getName(), dbProp.getPoolName());
+				});
+		log.info("Total Keycloak datasources initialized: {}", dataSourceMap.size());
+		return dataSourceMap;
+	}
+
 	private HikariDataSource createDataSource(DatasourceProperties connectionProperties) {
 
 		HikariDataSource dataSource = new HikariDataSource();
