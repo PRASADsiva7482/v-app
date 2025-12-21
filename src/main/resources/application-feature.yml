@@ -1,0 +1,34 @@
+# Feature Configuration
+feature:
+  mappings:
+    coreSystemConfig:
+      dynamicDetails:
+        skipEntityIdUrls: graphQl, login
+  # Example feature flags and service implementations
+  customerManagement:
+    service-impl: customerManagementServiceImpl
+    dynamicDetails:
+      enableValidation: true
+      maxRetryAttempts: 3
+      timeoutSeconds: 30
+  
+  subscriptionManagement:
+    service-impl: subscriptionManagementServiceImpl
+    dynamicDetails:
+      enableAutoRenewal: true
+      gracePeriodDays: 7
+      notificationEnabled: true
+  
+  billingManagement:
+    service-impl: billingManagementServiceImpl
+    dynamicDetails:
+      enableInvoiceGeneration: true
+      paymentGatewayEnabled: true
+      invoiceFormat: PDF
+  
+  reportGeneration:
+    service-impl: reportGenerationServiceImpl
+    dynamicDetails:
+      enableScheduledReports: true
+      maxReportSize: 5000
+      exportFormats: CSV,PDF,EXCEL

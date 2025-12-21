@@ -1,0 +1,59 @@
+# CP (Component/Partner) Details Configuration
+# External API endpoints and service configurations
+cpDetails:
+  crossOrigin:
+    allowAll: true
+    allowedIPs: http://localhost:3000
+  # Customer Management Service
+  customerService:
+    msApplicationName: CustomerManagement
+    urlDetails:
+      rootUrl: http://localhost:8081
+      additionalHeaders: Content-Type=application/json
+      readTimeout: 5000
+      connTimeout: 3000
+      urlEndPoints:
+        getCustomerDetails: /customer-service/customers/{customerId}
+        createCustomer: /customer-service/customers
+        updateCustomer: /customer-service/customers/{customerId}
+        deleteCustomer: /customer-service/customers/{customerId}
+  
+  # Billing Service
+  billingService:
+    msApplicationName: BillingManagement
+    urlDetails:
+      rootUrl: http://localhost:8082
+      additionalHeaders: Content-Type=application/json
+      readTimeout: 5000
+      connTimeout: 3000
+      urlEndPoints:
+        getInvoice: /billing-service/invoices/{invoiceId}
+        generateInvoice: /billing-service/invoices/generate
+        getBalance: /billing-service/balance/{accountId}
+  
+  # Subscription Service
+  subscriptionService:
+    msApplicationName: SubscriptionManagement
+    urlDetails:
+      rootUrl: http://localhost:8083
+      additionalHeaders: Content-Type=application/json
+      readTimeout: 5000
+      connTimeout: 3000
+      urlEndPoints:
+        getSubscription: /subscription-service/subscriptions/{subscriptionId}
+        createSubscription: /subscription-service/subscriptions
+        updateSubscription: /subscription-service/subscriptions/{subscriptionId}
+        cancelSubscription: /subscription-service/subscriptions/{subscriptionId}/cancel
+  
+  # Notification Service
+  notificationService:
+    msApplicationName: NotificationService
+    urlDetails:
+      rootUrl: http://localhost:8084
+      additionalHeaders: Content-Type=application/json
+      readTimeout: 3000
+      connTimeout: 2000
+      urlEndPoints:
+        sendEmail: /notification-service/email/send
+        sendSMS: /notification-service/sms/send
+        sendPushNotification: /notification-service/push/send

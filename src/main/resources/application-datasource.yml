@@ -1,0 +1,35 @@
+datasource:
+   crmdatasource:
+   -  name: initial
+      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      driverClassName: com.mysql.cj.jdbc.Driver
+      username: root
+      password: SIva@7482
+      poolName: CRM-POOL
+      maximumPoolSize: 10
+      minimumIdle: 10
+   -  name: crmcellcard
+      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      driverClassName: com.mysql.cj.jdbc.Driver
+      username: root
+      password: SIva@7482
+      poolName: CRM-POOL-CELLCARD
+      maximumPoolSize: 10
+      minimumIdle: 10
+   billingdatasource:
+   -  name: initial
+      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      driverClassName: com.mysql.cj.jdbc.Driver
+      username: root
+      password: SIva@7482
+      poolName: BILLING-POOL
+      maximumPoolSize: 10
+      minimumIdle: 10
+   -  name: billingcellcard
+      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      driverClassName: com.mysql.cj.jdbc.Driver
+      username: root
+      password: SIva@7482
+      poolName: BILLING-POOL-CELLCARD
+      maximumPoolSize: 10
+      minimumIdle: 10

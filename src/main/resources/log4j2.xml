@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" monitorInterval="30">
+    
+    <!-- Properties for log file paths -->
+    <Properties>
+        <Property name="log-path">./logs</Property>
+        <Property name="app-name">v-app</Property>
+        <Property name="archive-path">${log-path}/archive</Property>
+    </Properties>
+    
+    <Appenders>
+        
+        <!-- Console Appender with colored output -->
+        <Console name="Console" target="SYSTEM_OUT">
+            <PatternLayout>
+                <pattern><![CDATA[[%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}] [%15.15t] [%X{txnId}] [%X{userId}] %highlight{%-5level}{FATAL=red blink, ERROR=red, WARN=yellow bold, INFO=green, DEBUG=cyan, TRACE=blue} %style{%-40.40c{1.}}{cyan} : %msg%n%throwable]]></pattern>
+            </PatternLayout>
+        </Console>
+        
+        <!-- Main Application Log File -->
+        <RollingRandomAccessFile name="AppLogFile"
+            fileName="${log-path}/${app-name}.log"
+            filePattern="${archive-path}/${app-name}-%d{yyyy-MM-dd-HH}-%i.log.gz"
+            append="true">
+            <PatternLayout>
+                <pattern><![CDATA[[V-APP] [%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}] [%15.15t] [%-40.40c{1.}] [%-3L] [%X{txnId}] [%X{userId}] [%X{sessionId}] [%X{entityId}] [%-5level] : %replace{%msg}{(?i)(?<=password[\"']?\s*[:=]\s*[\"']?)[^\s,\"']+|(?<=token[\"']?\s*[:=]\s*[\"']?)[^\s,\"']+|(?<=secret[\"']?\s*[:=]\s*[\"']?)[^\s,\"']+|(?<=apiKey[\"']?\s*[:=]\s*[\"']?)[^\s,\"']+}{*****}%n%throwable]]></pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="30">
+                <Delete basePath="${archive-path}" maxDepth="2">
+                    <IfFileName glob="${app-name}-*.log.gz"/>
+                    <IfLastModified age="30d"/>
+                </Delete>
+            </DefaultRolloverStrategy>
+        </RollingRandomAccessFile>
+        
+        <!-- Error Log File - Only ERROR and FATAL -->
+        <RollingRandomAccessFile name="ErrorLogFile"
+            fileName="${log-path}/${app-name}-error.log"
+            filePattern="${archive-path}/${app-name}-error-%d{yyyy-MM-dd}-%i.log.gz"
+            append="true">
+            <PatternLayout>
+                <pattern><![CDATA[[V-APP-ERROR] [%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}] [%15.15t] [%-40.40c{1.}] [%-3L] [%X{txnId}] [%X{userId}] [%-5level] : %msg%n%throwable]]></pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="60"/>
+            <ThresholdFilter level="ERROR" onMatch="ACCEPT" onMismatch="DENY"/>
+        </RollingRandomAccessFile>
+        
+        <!-- Performance/Audit Log File -->
+        <RollingRandomAccessFile name="AuditLogFile"
+            fileName="${log-path}/${app-name}-audit.log"
+            filePattern="${archive-path}/${app-name}-audit-%d{yyyy-MM-dd}-%i.log.gz"
+            append="true">
+            <PatternLayout>
+                <pattern><![CDATA[[AUDIT] [%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}] [%X{txnId}] [%X{userId}] [%X{userName}] [%X{entityId}] : %msg%n]]></pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="90"/>
+        </RollingRandomAccessFile>
+        
+        <!-- SQL Log File - Database queries -->
+        <RollingRandomAccessFile name="SqlLogFile"
+            fileName="${log-path}/${app-name}-sql.log"
+            filePattern="${archive-path}/${app-name}-sql-%d{yyyy-MM-dd}-%i.log.gz"
+            append="true">
+            <PatternLayout>
+                <pattern><![CDATA[[SQL] [%d{yyyy-MM-dd'T'HH:mm:ss.SSSZ}] [%15.15t] [%X{txnId}] : %msg%n]]></pattern>
+            </PatternLayout>
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="1" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="100MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="15"/>
+        </RollingRandomAccessFile>
+        
+    </Appenders>
+    
+    <Loggers>
+        
+        <!-- Application Package Loggers -->
+        <AsyncLogger name="com.va.v.v_app" level="debug" includeLocation="true" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Keycloak Integration Logs -->
+        <AsyncLogger name="com.va.v.v_app.service.KeycloakRequestMaker" level="debug" includeLocation="true" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+            <AppenderRef ref="AuditLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Login/Authentication Logs -->
+        <AsyncLogger name="com.va.v.v_app.web.rest.controller.LoginController" level="info" includeLocation="true" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+            <AppenderRef ref="AuditLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Spring Framework -->
+        <AsyncLogger name="org.springframework" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <AsyncLogger name="org.springframework.web" level="debug" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <AsyncLogger name="org.springframework.security" level="debug" includeLocation="true" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Hibernate/JPA SQL Logging -->
+        <AsyncLogger name="org.hibernate.SQL" level="debug" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="SqlLogFile"/>
+        </AsyncLogger>
+        
+        <AsyncLogger name="org.hibernate.type.descriptor.sql.BasicBinder" level="trace" includeLocation="false" additivity="false">
+            <AppenderRef ref="SqlLogFile"/>
+        </AsyncLogger>
+        
+        <AsyncLogger name="org.hibernate.type" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="SqlLogFile"/>
+        </AsyncLogger>
+        
+        <AsyncLogger name="org.hibernate.engine" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <AsyncLogger name="org.hibernate" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- HikariCP Connection Pool -->
+        <AsyncLogger name="com.zaxxer.hikari" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Keycloak Client Logs -->
+        <AsyncLogger name="org.keycloak" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Feign Client Logs -->
+        <AsyncLogger name="org.springframework.cloud.openfeign" level="debug" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Consul Discovery -->
+        <AsyncLogger name="org.springframework.cloud.consul" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Jackson JSON Processing -->
+        <AsyncLogger name="com.fasterxml.jackson" level="warn" includeLocation="false" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Tomcat/Catalina -->
+        <AsyncLogger name="org.apache.catalina" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <AsyncLogger name="org.apache.tomcat" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Swagger/OpenAPI -->
+        <AsyncLogger name="org.springdoc" level="info" includeLocation="false" additivity="false">
+            <AppenderRef ref="AppLogFile"/>
+        </AsyncLogger>
+        
+        <!-- Root Logger -->
+        <Root level="info">
+            <AppenderRef ref="Console"/>
+            <AppenderRef ref="AppLogFile"/>
+        </Root>
+        
+    </Loggers>
+    
+</Configuration>
