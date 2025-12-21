@@ -1,7 +1,7 @@
 datasource:
    crmdatasource:
    -  name: initial
-      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
       driverClassName: com.mysql.cj.jdbc.Driver
       username: root
       password: SIva@7482
@@ -9,7 +9,7 @@ datasource:
       maximumPoolSize: 10
       minimumIdle: 10
    -  name: crmcellcard
-      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
       driverClassName: com.mysql.cj.jdbc.Driver
       username: root
       password: SIva@7482
@@ -18,7 +18,7 @@ datasource:
       minimumIdle: 10
    billingdatasource:
    -  name: initial
-      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
       driverClassName: com.mysql.cj.jdbc.Driver
       username: root
       password: SIva@7482
@@ -26,7 +26,7 @@ datasource:
       maximumPoolSize: 10
       minimumIdle: 10
    -  name: billingcellcard
-      jdbcUrl: jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
+      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
       driverClassName: com.mysql.cj.jdbc.Driver
       username: root
       password: SIva@7482
