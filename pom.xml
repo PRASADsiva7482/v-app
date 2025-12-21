@@ -78,6 +78,13 @@
 			<scope>runtime</scope>
 		</dependency>
 
+		<!-- dotenv-java: Load .env file automatically -->
+		<dependency>
+			<groupId>io.github.cdimascio</groupId>
+			<artifactId>dotenv-java</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+
 		<!-- Lombok: keep as provided; IDEs will also need Lombok plugin enabled -->
 		<dependency>
 			<groupId>org.projectlombok</groupId>
