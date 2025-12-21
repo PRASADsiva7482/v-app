@@ -1,35 +1,52 @@
 datasource:
    crmdatasource:
    -  name: initial
-      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
-      driverClassName: com.mysql.cj.jdbc.Driver
-      username: root
-      password: SIva@7482
+      jdbcUrl: ${DB_CRM_URL:jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=true&nullNamePatternMatchesAll=true&useUnicode=yes&requireSSL=true&allowPublicKeyRetrieval=true&sessionVariables=sql_require_primary_key=0&characterEncoding=UTF-8}
+      driverClassName: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+      username: ${DB_CRM_USERNAME:root}
+      password: ${DB_CRM_PASSWORD}
       poolName: CRM-POOL
-      maximumPoolSize: 10
-      minimumIdle: 10
+      maximumPoolSize: ${DB_POOL_MAX_SIZE:10}
+      minimumIdle: ${DB_POOL_MIN_IDLE:10}
    -  name: crmcellcard
-      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
-      driverClassName: com.mysql.cj.jdbc.Driver
-      username: root
-      password: SIva@7482
+      jdbcUrl: ${DB_CRM_CELLCARD_URL:jdbc:mysql://localhost:3306/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=true&nullNamePatternMatchesAll=true&useUnicode=yes&requireSSL=true&allowPublicKeyRetrieval=true&sessionVariables=sql_require_primary_key=0&characterEncoding=UTF-8}
+      driverClassName: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+      username: ${DB_CRM_CELLCARD_USERNAME:root}
+      password: ${DB_CRM_CELLCARD_PASSWORD}
       poolName: CRM-POOL-CELLCARD
-      maximumPoolSize: 10
-      minimumIdle: 10
+      maximumPoolSize: ${DB_POOL_MAX_SIZE:10}
+      minimumIdle: ${DB_POOL_MIN_IDLE:10}
    billingdatasource:
    -  name: initial
-      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
-      driverClassName: com.mysql.cj.jdbc.Driver
-      username: root
-      password: SIva@7482
+      jdbcUrl: ${DB_BILLING_URL:jdbc:mysql://localhost:3306/keycloak?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=true&nullNamePatternMatchesAll=true&useUnicode=yes&requireSSL=true&allowPublicKeyRetrieval=true&sessionVariables=sql_require_primary_key=0&characterEncoding=UTF-8}
+      driverClassName: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+      username: ${DB_BILLING_USERNAME:root}
+      password: ${DB_BILLING_PASSWORD}
       poolName: BILLING-POOL
-      maximumPoolSize: 10
-      minimumIdle: 10
+      maximumPoolSize: ${DB_POOL_MAX_SIZE:10}
+      minimumIdle: ${DB_POOL_MIN_IDLE:10}
    -  name: billingcellcard
-      jdbcUrl: jdbc:mysql://mysql-1c840090-v-app.k.aivencloud.com:20632/v_app?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=false&nullNamePatternMatchesAll=true&useUnicode=yes&characterEncoding=UTF-8
-      driverClassName: com.mysql.cj.jdbc.Driver
-      username: root
-      password: SIva@7482
+      jdbcUrl: ${DB_BILLING_CELLCARD_URL:jdbc:mysql://localhost:3306/keycloak?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=true&nullNamePatternMatchesAll=true&useUnicode=yes&requireSSL=true&allowPublicKeyRetrieval=true&sessionVariables=sql_require_primary_key=0&characterEncoding=UTF-8}
+      driverClassName: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+      username: ${DB_BILLING_CELLCARD_USERNAME:root}
+      password: ${DB_BILLING_CELLCARD_PASSWORD}
       poolName: BILLING-POOL-CELLCARD
-      maximumPoolSize: 10
-      minimumIdle: 10
+      maximumPoolSize: ${DB_POOL_MAX_SIZE:10}
+      minimumIdle: ${DB_POOL_MIN_IDLE:10}
+   keycloakdatasource:
+   -  name: initial
+      jdbcUrl: ${DB_KEYCLOAK_URL:jdbc:mysql://localhost:3306/keycloak?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=true&nullNamePatternMatchesAll=true&useUnicode=yes&requireSSL=true&allowPublicKeyRetrieval=true&sessionVariables=sql_require_primary_key=0&characterEncoding=UTF-8}
+      driverClassName: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+      username: ${DB_KEYCLOAK_USERNAME:root}
+      password: ${DB_KEYCLOAK_PASSWORD}
+      poolName: KEYCLOAK-POOL
+      maximumPoolSize: ${DB_POOL_MAX_SIZE:10}
+      minimumIdle: ${DB_POOL_MIN_IDLE:10}
+   -  name: billingcellcard
+      jdbcUrl: ${DB_KEYCLOAK_CELLCARD_URL:jdbc:mysql://localhost:3306/keycloak?zeroDateTimeBehavior=convertToNull&autoReconnect=true&useSSL=true&nullNamePatternMatchesAll=true&useUnicode=yes&requireSSL=true&allowPublicKeyRetrieval=true&sessionVariables=sql_require_primary_key=0&characterEncoding=UTF-8}
+      driverClassName: ${DB_DRIVER:com.mysql.cj.jdbc.Driver}
+      username: ${DB_KEYCLOAK_CELLCARD_USERNAME:root}
+      password: ${DB_KEYCLOAK_CELLCARD_PASSWORD}
+      poolName: KEYCLOAK-POOL-CELLCARD
+      maximumPoolSize: ${DB_POOL_MAX_SIZE:10}
+      minimumIdle: ${DB_POOL_MIN_IDLE:10}

@@ -36,3 +36,7 @@ build/
 logs/
 *.log
 *.log.gz
+
+### Environment Variables ###
+.env
+!.env.example
