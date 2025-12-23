@@ -16,4 +16,13 @@ public class KeycloakAccessToken {
     private String session_state;
     private String scope;
     private String active;
+
+    // Token introspection response fields
+    private String sub; // User ID
+    private String username;
+    private String email;
+    private String preferred_username;
+    private String name;
+    private String given_name;
+    private String family_name;
 }

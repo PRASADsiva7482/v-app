@@ -19,7 +19,8 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 @Configuration
 @EnableTransactionManagement
-@EnableJpaRepositories(basePackages = "com.va.v.v_app.persistence.primary", entityManagerFactoryRef = "primaryEntityManagerFactory", transactionManagerRef = "primaryTransactionManager")
+@EnableJpaRepositories(basePackages = { "com.va.v.v_app.persistence.primary",
+        "com.va.v.v_app.v.repository" }, entityManagerFactoryRef = "primaryEntityManagerFactory", transactionManagerRef = "primaryTransactionManager")
 public class PrimaryDataSourceConfig {
 
     @Autowired
@@ -31,7 +32,8 @@ public class PrimaryDataSourceConfig {
     public LocalContainerEntityManagerFactoryBean primaryEntityManagerFactory() {
         LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dynamicCRMDataSource);
-        em.setPackagesToScan("com.va.v.v_app.model.primary", "com.va.v.v_app.persistence.primary");
+        em.setPackagesToScan("com.va.v.v_app.model.primary", "com.va.v.v_app.persistence.primary",
+                "com.va.v.v_app.v.model");
         em.setPersistenceUnitName("primary");
 
         JpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();

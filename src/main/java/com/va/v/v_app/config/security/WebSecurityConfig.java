@@ -31,9 +31,9 @@ public class WebSecurityConfig {
          * JWT Request Filter Bean
          */
         @Bean
-        public JwtRequestFilter jwtRequestFilter(JwtUtil jwtUtil, KeycloakTokenValidator keycloakTokenValidator) {
+        public JwtRequestFilter jwtRequestFilter(KeycloakTokenValidator keycloakTokenValidator) {
                 log.info("Creating JwtRequestFilter bean with Keycloak validation");
-                return new JwtRequestFilter(jwtUtil, keycloakTokenValidator);
+                return new JwtRequestFilter(keycloakTokenValidator);
         }
 
         /**
@@ -46,7 +46,7 @@ public class WebSecurityConfig {
         }
 
         @Bean
-        public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtUtil jwtUtil,
+        public SecurityFilterChain securityFilterChain(HttpSecurity http,
                         KeycloakTokenValidator keycloakTokenValidator) throws Exception {
                 log.info("Configuring security filter chain");
 
@@ -80,7 +80,7 @@ public class WebSecurityConfig {
                                 // Add custom filters
                                 .addFilterBefore(serviceIdDecryptionFilter(),
                                                 UsernamePasswordAuthenticationFilter.class)
-                                .addFilterBefore(jwtRequestFilter(jwtUtil, keycloakTokenValidator),
+                                .addFilterBefore(jwtRequestFilter(keycloakTokenValidator),
                                                 UsernamePasswordAuthenticationFilter.class);
 
                 log.info("Security filter chain configured successfully");

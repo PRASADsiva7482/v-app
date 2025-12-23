@@ -13,6 +13,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.va.v.v_app.model.KeycloakAccessToken;
 import java.io.IOException;
 import java.util.Collections;
 
@@ -26,7 +27,6 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class JwtRequestFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
     private final KeycloakTokenValidator keycloakTokenValidator;
 
     @Override
@@ -63,28 +63,36 @@ public class JwtRequestFilter extends OncePerRequestFilter {
         // Extract JWT token from Authorization header
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             jwt = authorizationHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(jwt);
-                log.debug("JWT token found for user: {}", username);
-            } catch (Exception e) {
-                log.error("Error extracting username from JWT: {}", e.getMessage());
-                // Return 401 Unauthorized if token cannot be parsed
-                sendUnauthorizedResponse(response, "Invalid token format");
-                return;
-            }
+            log.debug("JWT token found in Authorization header");
         } else {
             log.debug("No JWT token found in request to: {}", request.getRequestURI());
         }
 
         // Validate token with Keycloak and set authentication
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            // Validate token with Keycloak
-            boolean isValidWithKeycloak = keycloakTokenValidator.validateToken(jwt);
+        if (jwt != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+            // Validate token with Keycloak and get user details
+            KeycloakAccessToken tokenDetails = keycloakTokenValidator.validateToken(jwt);
 
-            if (!isValidWithKeycloak) {
-                log.warn("Keycloak token validation failed for user: {}", username);
+            if (tokenDetails == null || !"true".equalsIgnoreCase(tokenDetails.getActive())) {
+                log.warn("Keycloak token validation failed");
                 // Return 401 Unauthorized if Keycloak validation fails
                 sendUnauthorizedResponse(response, "Token validation failed");
+                return;
+            }
+
+            // Extract username from Keycloak response (try preferred_username first, then
+            // username, then sub)
+            username = tokenDetails.getPreferred_username();
+            if (username == null || username.isEmpty()) {
+                username = tokenDetails.getUsername();
+            }
+            if (username == null || username.isEmpty()) {
+                username = tokenDetails.getSub(); // Use sub (user ID) as fallback
+            }
+
+            if (username == null || username.isEmpty()) {
+                log.error("Could not extract username from Keycloak token response");
+                sendUnauthorizedResponse(response, "Invalid token format");
                 return;
             }
 
@@ -101,9 +109,10 @@ public class JwtRequestFilter extends OncePerRequestFilter {
             // Set authentication in security context
             SecurityContextHolder.getContext().setAuthentication(authenticationToken);
 
-            // Store JWT in request attribute for later use
+            // Store JWT and user details in request attributes for later use
             request.setAttribute("JWT_TOKEN", jwt);
             request.setAttribute("USERNAME", username);
+            request.setAttribute("KEYCLOAK_TOKEN_DETAILS", tokenDetails);
 
             log.debug("Authentication set for user: {}", username);
         }

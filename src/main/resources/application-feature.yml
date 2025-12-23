@@ -32,3 +32,25 @@ feature:
       enableScheduledReports: true
       maxReportSize: 5000
       exportFormats: CSV,PDF,EXCEL
+  
+  # Social Media Features (Twitter-like)
+  media:
+    storage:
+      base-path: ${MEDIA_STORAGE_PATH:D:/project/uploaded_data}
+      image-path: ${MEDIA_STORAGE_PATH:D:/project/uploaded_data}/images
+      video-path: ${MEDIA_STORAGE_PATH:D:/project/uploaded_data}/videos
+      thumbnail-path: ${MEDIA_STORAGE_PATH:D:/project/uploaded_data}/thumbnails
+    upload:
+      max-file-size: 10485760  # 10MB in bytes
+      max-image-size: 5242880   # 5MB in bytes
+      max-video-size: 52428800  # 50MB in bytes
+      allowed-image-types: jpg,jpeg,png,gif,webp
+      allowed-video-types: mp4,webm,mov
+  
+  social:
+    pagination:
+      default-page-size: 20
+      max-page-size: 100
+    feed:
+      timeline-cache-minutes: 5
+      explore-cache-minutes: 15

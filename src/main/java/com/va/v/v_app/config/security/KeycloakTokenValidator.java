@@ -40,17 +40,21 @@ public class KeycloakTokenValidator {
      * Validates a JWT token with Keycloak
      * 
      * @param token JWT token to validate (without "Bearer " prefix)
-     * @return true if token is valid and active, false otherwise
+     * @return KeycloakAccessToken if token is valid and active, null otherwise
      */
-    public boolean validateToken(String token) {
+    public KeycloakAccessToken validateToken(String token) {
         if (!keycloakEnabled) {
             log.debug("Keycloak validation is disabled");
-            return true; // Skip validation if Keycloak is disabled
+            // Return a mock token when Keycloak is disabled
+            KeycloakAccessToken mockToken = new KeycloakAccessToken();
+            mockToken.setActive("true");
+            mockToken.setUsername("unauthenticated-user");
+            return mockToken;
         }
 
         if (StringUtils.isEmpty(token)) {
             log.warn("Cannot validate empty token");
-            return false;
+            return null;
         }
 
         try {
@@ -83,26 +87,26 @@ public class KeycloakTokenValidator {
 
             if (tokenResponse == null) {
                 log.warn("No response from Keycloak introspection endpoint");
-                return false;
+                return null;
             }
 
             // Check if token is active
             boolean isActive = "true".equalsIgnoreCase(tokenResponse.getActive());
 
             if (isActive) {
-                log.debug("Token is valid and active");
+                log.debug("Token is valid and active for user: {}", tokenResponse.getPreferred_username());
+                return tokenResponse;
             } else {
                 log.warn("Token is not active");
+                return null;
             }
-
-            return isActive;
 
         } catch (RestClientException e) {
             log.error("Error communicating with Keycloak: {}", e.getMessage());
-            return false;
+            return null;
         } catch (Exception e) {
             log.error("Unexpected error during token validation: {}", e.getMessage(), e);
-            return false;
+            return null;
         }
     }
 
