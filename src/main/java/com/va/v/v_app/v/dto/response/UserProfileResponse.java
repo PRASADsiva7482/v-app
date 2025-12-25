@@ -28,9 +28,15 @@ public class UserProfileResponse {
     private Integer followersCount;
     private Integer followingCount;
     private Integer postsCount;
+    private String about;
+    private LocalDateTime dateOfBirth;
+    private String phoneNumber;
+    private Boolean isVerified;
+    private Boolean isPrivate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
-    // Additional field for current user context
+    // Additional fields for current user context
     private Boolean isFollowing; // Set to true if current user follows this profile
+    private Boolean isOwnProfile; // Set to true if this is the current user's profile
 }

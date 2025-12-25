@@ -65,6 +65,23 @@ public class UserProfile {
     @Builder.Default
     private Integer postsCount = 0;
 
+    @Column(name = "about", columnDefinition = "TEXT")
+    private String about; // Detailed about/description section
+
+    @Column(name = "date_of_birth")
+    private LocalDateTime dateOfBirth;
+
+    @Column(name = "phone_number", length = 20)
+    private String phoneNumber;
+
+    @Column(name = "is_verified", nullable = false)
+    @Builder.Default
+    private Boolean isVerified = false;
+
+    @Column(name = "is_private", nullable = false)
+    @Builder.Default
+    private Boolean isPrivate = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

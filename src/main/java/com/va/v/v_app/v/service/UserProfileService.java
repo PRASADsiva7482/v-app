@@ -35,6 +35,17 @@ public class UserProfileService {
     }
 
     /**
+     * Get user profile by user ID with current user context (CACHED for 1 hour)
+     * Auto-creates profile if it doesn't exist
+     */
+    @Cacheable(value = USER_PROFILES_CACHE, key = "#userId + '-' + (#currentUserId ?: 'anonymous')")
+    @Transactional
+    public UserProfileResponse getProfileByUserId(String userId, String currentUserId) {
+        UserProfile profile = getOrCreateUserProfile(userId);
+        return mapToResponse(profile, currentUserId);
+    }
+
+    /**
      * Get user profile by username
      */
     @Transactional(readOnly = true)
@@ -42,6 +53,16 @@ public class UserProfileService {
         UserProfile profile = userProfileRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("User profile not found for username: " + username));
         return mapToResponse(profile);
+    }
+
+    /**
+     * Get user profile by username with current user context
+     */
+    @Transactional(readOnly = true)
+    public UserProfileResponse getProfileByUsername(String username, String currentUserId) {
+        UserProfile profile = userProfileRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User profile not found for username: " + username));
+        return mapToResponse(profile, currentUserId);
     }
 
     /**
@@ -91,7 +112,7 @@ public class UserProfileService {
     /**
      * Update user profile (Evicts cache)
      */
-    @CacheEvict(value = USER_PROFILES_CACHE, key = "#userId")
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
     @Transactional
     public UserProfileResponse updateProfile(String userId, UpdateProfileRequest request) {
         UserProfile profile = userProfileRepository.findByUserId(userId)
@@ -100,8 +121,20 @@ public class UserProfileService {
         if (request.getDisplayName() != null) {
             profile.setDisplayName(request.getDisplayName());
         }
+        if (request.getUsername() != null) {
+            profile.setUsername(request.getUsername());
+        }
         if (request.getBio() != null) {
             profile.setBio(request.getBio());
+        }
+        if (request.getAbout() != null) {
+            profile.setAbout(request.getAbout());
+        }
+        if (request.getProfilePictureUrl() != null) {
+            profile.setProfilePictureUrl(request.getProfilePictureUrl());
+        }
+        if (request.getCoverPhotoUrl() != null) {
+            profile.setCoverPhotoUrl(request.getCoverPhotoUrl());
         }
         if (request.getLocation() != null) {
             profile.setLocation(request.getLocation());
@@ -109,10 +142,19 @@ public class UserProfileService {
         if (request.getWebsite() != null) {
             profile.setWebsite(request.getWebsite());
         }
+        if (request.getDateOfBirth() != null) {
+            profile.setDateOfBirth(request.getDateOfBirth());
+        }
+        if (request.getPhoneNumber() != null) {
+            profile.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getIsPrivate() != null) {
+            profile.setIsPrivate(request.getIsPrivate());
+        }
 
         UserProfile updated = userProfileRepository.save(profile);
         log.info("Updated profile for user: {}", userId);
-        return mapToResponse(updated);
+        return mapToResponse(updated, userId); // Pass userId so isOwnProfile is set correctly
     }
 
     /**
@@ -208,24 +250,51 @@ public class UserProfileService {
     }
 
     /**
+     * Search users by username or display name
+     */
+    @Transactional(readOnly = true)
+    public org.springframework.data.domain.Page<UserProfileResponse> searchUsers(String keyword,
+            org.springframework.data.domain.Pageable pageable) {
+        log.debug("Searching users with keyword: {}", keyword);
+        org.springframework.data.domain.Page<UserProfile> profiles = userProfileRepository.searchUsers(keyword,
+                pageable);
+        return profiles.map(this::mapToResponse);
+    }
+
+    /**
      * Map entity to response DTO
      */
-    private UserProfileResponse mapToResponse(UserProfile profile) {
+    private UserProfileResponse mapToResponse(UserProfile profile, String currentUserId) {
+        boolean isOwnProfile = currentUserId != null && currentUserId.equals(profile.getUserId());
         return UserProfileResponse.builder()
                 .id(profile.getId())
                 .userId(profile.getUserId())
                 .username(profile.getUsername())
                 .displayName(profile.getDisplayName())
                 .bio(profile.getBio())
+                .about(profile.getAbout())
                 .profilePictureUrl(profile.getProfilePictureUrl())
                 .coverPhotoUrl(profile.getCoverPhotoUrl())
                 .location(profile.getLocation())
                 .website(profile.getWebsite())
+                .dateOfBirth(profile.getDateOfBirth())
+                .phoneNumber(profile.getPhoneNumber())
+                .isVerified(profile.getIsVerified())
+                .isPrivate(profile.getIsPrivate())
                 .followersCount(profile.getFollowersCount())
                 .followingCount(profile.getFollowingCount())
                 .postsCount(profile.getPostsCount())
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
+                .isOwnProfile(isOwnProfile)
                 .build();
+    }
+
+    /**
+     * Map entity to response DTO (backward compatibility - isOwnProfile will be
+     * null/false)
+     */
+    private UserProfileResponse mapToResponse(UserProfile profile) {
+        return mapToResponse(profile, null);
     }
 }

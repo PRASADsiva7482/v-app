@@ -28,21 +28,27 @@ public class UserProfileController {
     @GetMapping("/me")
     public ResponseEntity<UserProfileResponse> getMyProfile(Authentication authentication) {
         String userId = authentication.getName();
-        UserProfileResponse profile = userProfileService.getProfileByUserId(userId);
+        UserProfileResponse profile = userProfileService.getProfileByUserId(userId, userId);
         return ResponseEntity.ok(profile);
     }
 
     @Operation(summary = "Get user profile by userId")
     @GetMapping("/{userId}")
-    public ResponseEntity<UserProfileResponse> getProfileByUserId(@PathVariable String userId) {
-        UserProfileResponse profile = userProfileService.getProfileByUserId(userId);
+    public ResponseEntity<UserProfileResponse> getProfileByUserId(
+            @PathVariable String userId,
+            Authentication authentication) {
+        String currentUserId = authentication != null ? authentication.getName() : null;
+        UserProfileResponse profile = userProfileService.getProfileByUserId(userId, currentUserId);
         return ResponseEntity.ok(profile);
     }
 
     @Operation(summary = "Get user profile by username")
     @GetMapping("/username/{username}")
-    public ResponseEntity<UserProfileResponse> getProfileByUsername(@PathVariable String username) {
-        UserProfileResponse profile = userProfileService.getProfileByUsername(username);
+    public ResponseEntity<UserProfileResponse> getProfileByUsername(
+            @PathVariable String username,
+            Authentication authentication) {
+        String currentUserId = authentication != null ? authentication.getName() : null;
+        UserProfileResponse profile = userProfileService.getProfileByUsername(username, currentUserId);
         return ResponseEntity.ok(profile);
     }
 
@@ -74,5 +80,17 @@ public class UserProfileController {
         String userId = authentication.getName();
         UserProfileResponse updated = userProfileService.updateCoverPhoto(userId, coverPhotoUrl);
         return ResponseEntity.ok(updated);
+    }
+
+    @Operation(summary = "Search users by username or display name")
+    @GetMapping("/search")
+    public ResponseEntity<org.springframework.data.domain.Page<UserProfileResponse>> searchUsers(
+            @RequestParam String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size);
+        org.springframework.data.domain.Page<UserProfileResponse> users = userProfileService.searchUsers(keyword,
+                pageable);
+        return ResponseEntity.ok(users);
     }
 }

@@ -133,7 +133,7 @@ public class PostService {
     /**
      * Map entity to response DTO
      */
-    private PostResponse mapToResponse(Post post, String currentUserId) {
+    public PostResponse mapToResponse(Post post, String currentUserId) {
         UserProfileResponse author = userProfileService.getProfileByUserId(post.getUserId());
 
         boolean isLiked = currentUserId != null &&
