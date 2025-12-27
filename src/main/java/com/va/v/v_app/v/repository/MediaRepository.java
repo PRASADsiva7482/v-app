@@ -14,5 +14,7 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
 
     List<Media> findByPost_Id(Long postId);
 
+    List<Media> findByPostId(Long postId);
+
     void deleteByPost_Id(Long postId);
 }

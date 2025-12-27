@@ -67,6 +67,10 @@ public class WebSecurityConfig {
                                                                 "/actuator/**",
                                                                 "/error",
                                                                 "/public/**",
+                                                                "/api/v1/media/images/**", // Allow public access to
+                                                                                           // images
+                                                                "/api/v1/media/videos/**", // Allow public access to
+                                                                                           // videos
                                                                 "/api/test/**" // Test endpoints for development
                                                 ).permitAll()
 

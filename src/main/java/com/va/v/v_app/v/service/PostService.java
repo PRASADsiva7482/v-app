@@ -28,21 +28,36 @@ public class PostService {
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
     private final UserProfileService userProfileService;
+    private final MediaService mediaService;
 
     /**
      * Create a new post
      */
     @Transactional
     public PostResponse createPost(String userId, CreatePostRequest request) {
+        // Validate that either content or media is provided
+        if ((request.getContent() == null || request.getContent().trim().isEmpty()) &&
+                (request.getMediaIds() == null || request.getMediaIds().isEmpty())) {
+            throw new RuntimeException("Post must have either content or media");
+        }
+
         Post post = Post.builder()
                 .userId(userId)
-                .content(request.getContent())
+                .content(request.getContent() != null ? request.getContent() : "")
                 .build();
 
         Post savedPost = postRepository.save(post);
+
+        // Attach media if provided
+        if (request.getMediaIds() != null && !request.getMediaIds().isEmpty()) {
+            mediaService.attachMediaToPost(savedPost.getId(), request.getMediaIds());
+            savedPost.setMediaCount(request.getMediaIds().size());
+        }
+
         userProfileService.incrementPostsCount(userId);
 
-        log.info("Created new post with ID: {} by user: {}", savedPost.getId(), userId);
+        log.info("Created new post with ID: {} by user: {} with {} media files",
+                savedPost.getId(), userId, savedPost.getMediaCount());
         return mapToResponse(savedPost, userId);
     }
 
@@ -141,6 +156,10 @@ public class PostService {
 
         boolean isOwnPost = currentUserId != null && post.getUserId().equals(currentUserId);
 
+        // Fetch media for the post
+        var mediaList = mediaService.getMediaByPostId(post.getId());
+        var mediaResponses = mediaService.mapToResponseList(mediaList);
+
         return PostResponse.builder()
                 .id(post.getId())
                 .userId(post.getUserId())
@@ -153,7 +172,7 @@ public class PostService {
                 .createdAt(post.getCreatedAt())
                 .updatedAt(post.getUpdatedAt())
                 .author(author)
-                .media(new ArrayList<>())
+                .media(mediaResponses)
                 .isLiked(isLiked)
                 .isOwnPost(isOwnPost)
                 .build();
