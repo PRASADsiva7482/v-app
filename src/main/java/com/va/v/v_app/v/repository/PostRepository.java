@@ -69,10 +69,13 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 	@Query("SELECT COUNT(p) FROM Post p WHERE p.id IN :postIds")
 	long countByPost_IdIn(@Param("postIds") List<Long> postIds);
 
-	// Search posts by content
-	@Query("SELECT p FROM Post p WHERE p.isDeleted = false AND "
-			+ "LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) " + "ORDER BY p.createdAt DESC")
+	// Search posts by content or hashtags
+	@Query("SELECT DISTINCT p FROM Post p " +
+			"LEFT JOIN p.postHashtags ph " +
+			"LEFT JOIN ph.hashtag h " +
+			"WHERE p.isDeleted = false AND (" +
+			"LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+			"LOWER(h.tagName) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
+			") ORDER BY p.createdAt DESC")
 	Page<Post> searchPosts(@Param("keyword") String keyword, Pageable pageable);
-//    @Query("SELECT p FROM Post p WHERE p.isDeleted = false AND p.content LIKE %:keyword% ORDER BY p.createdAt DESC")
-//    Page<Post> searchPosts(@Param("keyword") String keyword, Pageable pageable);
 }

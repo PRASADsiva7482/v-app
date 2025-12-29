@@ -29,6 +29,7 @@ public class PostService {
     private final PostLikeRepository postLikeRepository;
     private final UserProfileService userProfileService;
     private final MediaService mediaService;
+    private final HashtagService hashtagService;
 
     /**
      * Create a new post
@@ -52,6 +53,11 @@ public class PostService {
         if (request.getMediaIds() != null && !request.getMediaIds().isEmpty()) {
             mediaService.attachMediaToPost(savedPost.getId(), request.getMediaIds());
             savedPost.setMediaCount(request.getMediaIds().size());
+        }
+
+        // Extract and associate hashtags
+        if (request.getContent() != null && !request.getContent().trim().isEmpty()) {
+            hashtagService.associateHashtagsWithPost(savedPost, request.getContent());
         }
 
         userProfileService.incrementPostsCount(userId);
@@ -86,6 +92,12 @@ public class PostService {
         post.setContent(request.getContent());
         Post updated = postRepository.save(post);
 
+        // Re-associate hashtags (remove old, add new)
+        hashtagService.removeHashtagsFromPost(postId);
+        if (request.getContent() != null && !request.getContent().trim().isEmpty()) {
+            hashtagService.associateHashtagsWithPost(updated, request.getContent());
+        }
+
         log.info("Updated post ID: {} by user: {}", postId, userId);
         return mapToResponse(updated, userId);
     }
@@ -105,6 +117,10 @@ public class PostService {
         post.setIsDeleted(true);
         post.setDeletedAt(LocalDateTime.now());
         postRepository.save(post);
+
+        // Remove hashtag associations
+        hashtagService.removeHashtagsFromPost(postId);
+
         userProfileService.decrementPostsCount(userId);
 
         log.info("Deleted post ID: {} by user: {}", postId, userId);
@@ -160,6 +176,9 @@ public class PostService {
         var mediaList = mediaService.getMediaByPostId(post.getId());
         var mediaResponses = mediaService.mapToResponseList(mediaList);
 
+        // Fetch hashtags for the post
+        var hashtagResponses = hashtagService.getHashtagsForPost(post.getId());
+
         return PostResponse.builder()
                 .id(post.getId())
                 .userId(post.getUserId())
@@ -173,6 +192,7 @@ public class PostService {
                 .updatedAt(post.getUpdatedAt())
                 .author(author)
                 .media(mediaResponses)
+                .hashtags(hashtagResponses)
                 .isLiked(isLiked)
                 .isOwnPost(isOwnPost)
                 .build();
