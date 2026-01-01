@@ -43,4 +43,8 @@ public interface HashtagRepository extends JpaRepository<Hashtag, Long> {
     @Modifying
     @Query("UPDATE Hashtag h SET h.usageCount = h.usageCount - 1 WHERE h.id = :hashtagId AND h.usageCount > 0")
     void decrementUsageCount(@Param("hashtagId") Long hashtagId);
+
+    // Find top hashtags by recent usage for trending analysis
+    @Query("SELECT h FROM Hashtag h WHERE h.lastUsedAt >= :since ORDER BY h.usageCount DESC, h.lastUsedAt DESC")
+    Page<Hashtag> findTopHashtagsByLastUsed(@Param("since") LocalDateTime since, Pageable pageable);
 }
