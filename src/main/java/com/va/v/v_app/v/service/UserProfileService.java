@@ -67,8 +67,10 @@ public class UserProfileService {
 
     /**
      * Create or get user profile (auto-create if not exists)
+     * Uses REQUIRES_NEW to ensure profile creation works even in read-only parent
+     * transactions
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public UserProfile getOrCreateProfile(String userId, String username) {
         return userProfileRepository.findByUserId(userId)
                 .orElseGet(() -> {
@@ -85,8 +87,10 @@ public class UserProfileService {
     /**
      * Get or auto-create user profile by userId only
      * Used when we only have userId (e.g., from JWT token)
+     * Uses REQUIRES_NEW to ensure profile creation works even in read-only parent
+     * transactions
      */
-    @Transactional
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
     public UserProfile getOrCreateUserProfile(String userId) {
         return userProfileRepository.findByUserId(userId)
                 .orElseGet(() -> {

@@ -22,6 +22,7 @@ import lombok.extern.log4j.Log4j2;
 @EnableFeignClients(basePackages = { "com.va.v.v_app" })
 @ComponentScan(basePackages = { "com.va.v.v_app" })
 @SpringBootApplication
+@org.springframework.scheduling.annotation.EnableScheduling // Enable background jobs for For You feed
 public class VAppApplication {
 
 	public static void main(String[] args) {

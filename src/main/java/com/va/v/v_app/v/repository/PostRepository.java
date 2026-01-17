@@ -78,4 +78,21 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 			"LOWER(h.tagName) LIKE LOWER(CONCAT('%', :keyword, '%'))" +
 			") ORDER BY p.createdAt DESC")
 	Page<Post> searchPosts(@Param("keyword") String keyword, Pageable pageable);
+
+	// For You Feed - Recent posts query
+	@Query("SELECT p FROM Post p WHERE p.isDeleted = false AND p.createdAt >= :since ORDER BY p.createdAt DESC")
+	List<Post> findRecentPosts(@Param("since") java.time.LocalDateTime since, Pageable pageable);
+
+	// For You Feed - Posts from followed users
+	@Query("SELECT p FROM Post p WHERE p.userId IN :userIds AND p.isDeleted = false ORDER BY p.createdAt DESC")
+	List<Post> findByUserIdInAndIsDeletedFalseOrderByCreatedAtDesc(@Param("userIds") List<String> userIds,
+			Pageable pageable);
+
+	// For You Feed - Posts with specific hashtags
+	@Query("SELECT DISTINCT p FROM Post p " +
+			"LEFT JOIN p.postHashtags ph " +
+			"LEFT JOIN ph.hashtag h " +
+			"WHERE p.isDeleted = false AND h.tagName IN :hashtagNames " +
+			"ORDER BY p.createdAt DESC")
+	List<Post> findByHashtagsIn(@Param("hashtagNames") java.util.Set<String> hashtagNames, Pageable pageable);
 }
