@@ -138,11 +138,59 @@ public class ForYouFeedController {
     }
 
     /**
+     * Get personalized "For You" feed with cursor-based pagination (Infinite
+     * Scroll)
+     * 
+     * @param authentication User authentication (optional for anonymous)
+     * @param cursor         Cursor for pagination (null for first page)
+     * @param limit          Number of posts per page (max 50)
+     * @return Personalized list of posts with cursor
+     */
+    @Operation(summary = "Get 'For You' feed with cursor pagination", description = "Returns a personalized feed using cursor-based pagination for efficient infinite scroll. "
+            +
+            "Optimized for mobile and progressive loading.")
+    @GetMapping("/for-you/cursor")
+    public ResponseEntity<com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse>> getForYouFeedWithCursor(
+            @Parameter(description = "Current user authentication", hidden = true) Authentication authentication,
+
+            @Parameter(description = "Cursor for next page (use null for first page)") @RequestParam(required = false) Long cursor,
+
+            @Parameter(description = "Number of posts per page (max 50)") @RequestParam(defaultValue = "20") int limit) {
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // Get user ID from authentication
+            String userId = authentication != null ? authentication.getName() : null;
+
+            log.info("For You feed cursor request - user: {}, cursor: {}, limit: {}", userId, cursor, limit);
+
+            // Generate feed with cursor
+            var response = forYouFeedService.generateForYouFeedWithCursor(userId, cursor, limit);
+
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("For You feed cursor generated in {}ms - {} posts returned", duration,
+                    response.getData().size());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Error generating For You feed with cursor", e);
+
+            var errorResponse = com.va.v.v_app.v.dto.response.CursorPageResponse.<PostResponse>of(
+                    new java.util.ArrayList<>(), null, limit);
+
+            return ResponseEntity.internalServerError().body(errorResponse);
+        }
+
+    }
+
+    /**
      * Health check endpoint for feed system
      */
     @Operation(summary = "Feed system health check")
     @GetMapping("/for-you/health")
     public ResponseEntity<Map<String, Object>> healthCheck() {
+
         Map<String, Object> health = new HashMap<>();
         health.put("status", "UP");
         health.put("service", "ForYouFeed");

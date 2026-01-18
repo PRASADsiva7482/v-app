@@ -68,4 +68,117 @@ public class FeedService {
     public Page<PostResponse> getUserFeed(String targetUserId, String currentUserId, Pageable pageable) {
         return postService.getPostsByUser(targetUserId, currentUserId, pageable);
     }
+
+    // ========== CURSOR-BASED PAGINATION (Infinite Scroll) ==========
+
+    /**
+     * Get timeline feed with cursor-based pagination
+     */
+    @Transactional(readOnly = true)
+    public com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse> getTimelineFeedWithCursor(
+            String userId, Long cursor, int limit) {
+
+        // Validate limit
+        if (limit > 50)
+            limit = 50;
+        if (limit < 1)
+            limit = 20;
+
+        // Get list of users the current user follows
+        List<String> followingIds = followRepository.findFollowingUserIds(userId);
+        followingIds.add(userId); // Add current user's own posts
+
+        if (followingIds.isEmpty()) {
+            // If not following anyone, return empty feed
+            return com.va.v.v_app.v.dto.response.CursorPageResponse.of(
+                    new java.util.ArrayList<>(), null, limit);
+        }
+
+        // Get posts from followed users with cursor
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
+                limit + 1); // Fetch one extra to determine hasNext
+        List<com.va.v.v_app.v.model.Post> posts = postRepository.findByUserIdInWithCursor(followingIds, cursor,
+                pageable);
+
+        // Map to response DTOs
+        List<PostResponse> responseList = posts.stream()
+                .limit(limit)
+                .map(post -> postService.mapToResponse(post, userId))
+                .toList();
+
+        // Calculate next cursor
+        String nextCursor = null;
+        if (posts.size() > limit) {
+            // There are more posts
+            nextCursor = String.valueOf(responseList.get(responseList.size() - 1).getId());
+        }
+
+        return com.va.v.v_app.v.dto.response.CursorPageResponse.of(responseList, nextCursor, limit);
+    }
+
+    /**
+     * Get explore feed with cursor-based pagination
+     */
+    @Transactional(readOnly = true)
+    public com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse> getExploreFeedWithCursor(
+            String userId, Long cursor, int limit) {
+
+        // Validate limit
+        if (limit > 50)
+            limit = 50;
+        if (limit < 1)
+            limit = 20;
+
+        // Get all posts with cursor
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
+                limit + 1); // Fetch one extra
+        List<com.va.v.v_app.v.model.Post> posts = postRepository.findWithCursor(cursor, pageable);
+
+        // Map to response DTOs
+        List<PostResponse> responseList = posts.stream()
+                .limit(limit)
+                .map(post -> postService.mapToResponse(post, userId))
+                .toList();
+
+        // Calculate next cursor
+        String nextCursor = null;
+        if (posts.size() > limit) {
+            nextCursor = String.valueOf(responseList.get(responseList.size() - 1).getId());
+        }
+
+        return com.va.v.v_app.v.dto.response.CursorPageResponse.of(responseList, nextCursor, limit);
+    }
+
+    /**
+     * Get user feed with cursor-based pagination
+     */
+    @Transactional(readOnly = true)
+    public com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse> getUserFeedWithCursor(
+            String targetUserId, String currentUserId, Long cursor, int limit) {
+
+        // Validate limit
+        if (limit > 50)
+            limit = 50;
+        if (limit < 1)
+            limit = 20;
+
+        // Get user posts with cursor
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0,
+                limit + 1);
+        List<com.va.v.v_app.v.model.Post> posts = postRepository.findByUserIdWithCursor(targetUserId, cursor, pageable);
+
+        // Map to response DTOs
+        List<PostResponse> responseList = posts.stream()
+                .limit(limit)
+                .map(post -> postService.mapToResponse(post, currentUserId))
+                .toList();
+
+        // Calculate next cursor
+        String nextCursor = null;
+        if (posts.size() > limit) {
+            nextCursor = String.valueOf(responseList.get(responseList.size() - 1).getId());
+        }
+
+        return com.va.v.v_app.v.dto.response.CursorPageResponse.of(responseList, nextCursor, limit);
+    }
 }

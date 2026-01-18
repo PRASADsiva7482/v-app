@@ -149,4 +149,70 @@ public class CommentService {
                 .isOwnComment(isOwnComment)
                 .build();
     }
+
+    // ========== CURSOR-BASED PAGINATION (Infinite Scroll) ==========
+
+    /**
+     * Get comments for post with cursor-based pagination
+     */
+    @Transactional(readOnly = true)
+    public com.va.v.v_app.v.dto.response.CursorPageResponse<CommentResponse> getCommentsForPostWithCursor(
+            Long postId, String currentUserId, Long cursor, int limit) {
+
+        // Validate limit
+        if (limit > 50)
+            limit = 50;
+        if (limit < 1)
+            limit = 20;
+
+        // Fetch comments with cursor (fetch one extra to determine hasNext)
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(0, limit + 1);
+        List<Comment> comments = commentRepository.findByPostIdWithCursor(postId, cursor, pageable);
+
+        // Map to response DTOs
+        List<CommentResponse> responseList = comments.stream()
+                .limit(limit)
+                .map(comment -> mapToResponse(comment, currentUserId))
+                .toList();
+
+        // Calculate next cursor
+        String nextCursor = null;
+        if (comments.size() > limit) {
+            nextCursor = String.valueOf(responseList.get(responseList.size() - 1).getId());
+        }
+
+        return com.va.v.v_app.v.dto.response.CursorPageResponse.of(responseList, nextCursor, limit);
+    }
+
+    /**
+     * Get replies for comment with cursor-based pagination
+     */
+    @Transactional(readOnly = true)
+    public com.va.v.v_app.v.dto.response.CursorPageResponse<CommentResponse> getRepliesForCommentWithCursor(
+            Long commentId, String currentUserId, Long cursor, int limit) {
+
+        // Validate limit
+        if (limit > 50)
+            limit = 50;
+        if (limit < 1)
+            limit = 20;
+
+        // Fetch replies with cursor
+        Pageable pageable = org.springframework.data.domain.PageRequest.of(0, limit + 1);
+        List<Comment> replies = commentRepository.findRepliesWithCursor(commentId, cursor, pageable);
+
+        // Map to response DTOs
+        List<CommentResponse> responseList = replies.stream()
+                .limit(limit)
+                .map(reply -> mapToResponse(reply, currentUserId))
+                .toList();
+
+        // Calculate next cursor
+        String nextCursor = null;
+        if (replies.size() > limit) {
+            nextCursor = String.valueOf(responseList.get(responseList.size() - 1).getId());
+        }
+
+        return com.va.v.v_app.v.dto.response.CursorPageResponse.of(responseList, nextCursor, limit);
+    }
 }

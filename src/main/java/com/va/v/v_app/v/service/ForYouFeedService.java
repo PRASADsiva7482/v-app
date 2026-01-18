@@ -83,6 +83,62 @@ public class ForYouFeedService {
     }
 
     /**
+     * Generate personalized "For You" feed with cursor-based pagination
+     * Optimized for infinite scroll
+     * 
+     * @param userId User ID
+     * @param cursor Cursor for pagination (lastPostId), null for first page
+     * @param limit  Number of posts to fetch
+     * @return List of posts and next cursor
+     */
+    @Transactional
+    public com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse> generateForYouFeedWithCursor(
+            String userId, Long cursor, int limit) {
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // Validate limit
+            if (limit > 50) {
+                limit = 50;
+            }
+            if (limit < 1) {
+                limit = 20;
+            }
+
+            // Generate feed similar to original method but with cursor
+            List<ScoredPost> scoredPosts = aggregateFeedSourcesWithCursor(userId, cursor, limit);
+
+            // Convert to responses
+            List<PostResponse> posts = scoredPosts.stream()
+                    .map(sp -> {
+                        Post post = postRepository.findById(sp.getPostId()).orElse(null);
+                        return post != null ? postService.mapToResponse(post, userId) : null;
+                    })
+                    .filter(Objects::nonNull)
+                    .collect(Collectors.toList());
+
+            // Calculate next cursor
+            String nextCursor = null;
+            if (!posts.isEmpty() && posts.size() >= limit) {
+                // Use the last post's ID as cursor
+                nextCursor = String.valueOf(posts.get(posts.size() - 1).getId());
+            }
+
+            // Build metadata
+            Map<String, Object> metadata = new HashMap<>();
+            metadata.put("generationTime", (System.currentTimeMillis() - startTime) + "ms");
+            metadata.put("algorithm", "v1.0-cursor");
+            metadata.put("timestamp", java.time.LocalDateTime.now().toString());
+
+            return com.va.v.v_app.v.dto.response.CursorPageResponse.of(posts, nextCursor, limit, metadata);
+
+        } finally {
+            long duration = System.currentTimeMillis() - startTime;
+            log.info("generateForYouFeedWithCursor completed in {}ms for user: {}", duration, userId);
+        }
+    }
+
+    /**
      * Aggregate feed from multiple sources
      */
     private List<ScoredPost> aggregateFeedSources(String userId, int size) {
@@ -144,6 +200,137 @@ public class ForYouFeedService {
         // Fallback to DB
         log.debug("Trending cache miss, falling back to DB");
         return getRecentPopularPosts(count);
+    }
+
+    /**
+     * Aggregate feed from multiple sources with cursor-based pagination
+     */
+    private List<ScoredPost> aggregateFeedSourcesWithCursor(String userId, Long cursor, int limit) {
+        var composition = config.getComposition();
+
+        // Calculate how many posts from each source
+        int trendingCount = (limit * composition.getGlobalTrending()) / 100;
+        int followingCount = (limit * composition.getFollowing()) / 100;
+        int interestCount = (limit * composition.getInterestBased()) / 100;
+        int discoveryCount = (limit * composition.getDiscovery()) / 100;
+
+        // Ensure we always get at least the requested size
+        int total = trendingCount + followingCount + interestCount + discoveryCount;
+        if (total < limit) {
+            trendingCount += (limit - total);
+        }
+
+        log.debug("Feed composition with cursor - Trending: {}, Following: {}, Interest: {}, Discovery: {}",
+                trendingCount, followingCount, interestCount, discoveryCount);
+
+        // Fetch from each source with cursor
+        List<ScoredPost> allPosts = new ArrayList<>();
+
+        // 1. Global Trending
+        allPosts.addAll(getGlobalTrendingPostsWithCursor(cursor, trendingCount));
+
+        // 2. Following Feed
+        allPosts.addAll(getFollowingPostsWithCursor(userId, cursor, followingCount));
+
+        // 3. Interest-based
+        allPosts.addAll(getInterestBasedPostsWithCursor(userId, cursor, interestCount));
+
+        // 4. Discovery
+        allPosts.addAll(getDiscoveryPostsWithCursor(userId, cursor, discoveryCount));
+
+        // 5. Deduplicate (keep highest scored version)
+        List<ScoredPost> uniquePosts = deduplicatePosts(allPosts);
+
+        // 6. Rerank with personalization
+        List<ScoredPost> rankedPosts = rerankWithPersonalization(uniquePosts, userId);
+
+        // 7. Return top N
+        return rankedPosts.stream()
+                .limit(limit)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get global trending posts with cursor-based pagination
+     */
+    private List<ScoredPost> getGlobalTrendingPostsWithCursor(Long cursor, int count) {
+        Pageable pageable = PageRequest.of(0, count);
+        LocalDateTime since = LocalDateTime.now().minusDays(config.getRanking().getTimeDecay().getMaxAgeDays());
+
+        List<Post> posts = postRepository.findRecentPostsWithCursor(since, cursor, pageable);
+
+        return posts.stream()
+                .filter(rankingService::meetsEngagementThreshold)
+                .map(rankingService::calculateTrendingScore)
+                .sorted((a, b) -> Double.compare(b.getTrendingScore(), a.getTrendingScore()))
+                .limit(count)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get following posts with cursor-based pagination
+     */
+    private List<ScoredPost> getFollowingPostsWithCursor(String userId, Long cursor, int count) {
+        List<String> followingIds = followRepository.findFollowingUserIds(userId);
+
+        if (followingIds.isEmpty()) {
+            log.debug("User {} has no following, using global trending instead", userId);
+            return getGlobalTrendingPostsWithCursor(cursor, count);
+        }
+
+        Pageable pageable = PageRequest.of(0, count);
+        List<Post> posts = postRepository.findByUserIdInWithCursor(followingIds, cursor, pageable);
+
+        return posts.stream()
+                .map(rankingService::calculateTrendingScore)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get interest-based posts with cursor-based pagination
+     */
+    private List<ScoredPost> getInterestBasedPostsWithCursor(String userId, Long cursor, int count) {
+        Set<String> interests = getUserInterests(userId);
+
+        if (interests.isEmpty()) {
+            log.debug("User {} has no interests, using discovery instead", userId);
+            return getDiscoveryPostsWithCursor(userId, cursor, count);
+        }
+
+        // Extract hashtag names
+        Set<String> hashtagNames = interests.stream()
+                .filter(i -> i.startsWith("hashtag:"))
+                .map(i -> i.replace("hashtag:", ""))
+                .collect(Collectors.toSet());
+
+        if (hashtagNames.isEmpty()) {
+            return getDiscoveryPostsWithCursor(userId, cursor, count);
+        }
+
+        Pageable pageable = PageRequest.of(0, count);
+        List<Post> posts = postRepository.findByHashtagsInWithCursor(hashtagNames, cursor, pageable);
+
+        return posts.stream()
+                .map(post -> rankingService.calculatePersonalizedScore(post, userId, interests))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get discovery posts with cursor-based pagination
+     */
+    private List<ScoredPost> getDiscoveryPostsWithCursor(String userId, Long cursor, int count) {
+        Pageable pageable = PageRequest.of(0, count * 2);
+        LocalDateTime since = LocalDateTime.now().minusDays(7);
+
+        List<Post> posts = postRepository.findRecentPostsWithCursor(since, cursor, pageable);
+
+        // Shuffle for randomness
+        Collections.shuffle(posts);
+
+        return posts.stream()
+                .limit(count)
+                .map(rankingService::calculateTrendingScore)
+                .collect(Collectors.toList());
     }
 
     /**

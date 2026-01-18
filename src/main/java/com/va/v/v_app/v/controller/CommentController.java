@@ -85,4 +85,30 @@ public class CommentController {
         commentService.deleteComment(commentId, userId);
         return ResponseEntity.noContent().build();
     }
+
+    // ========== CURSOR-BASED PAGINATION (Infinite Scroll) ==========
+
+    @Operation(summary = "Get comments for a post with cursor pagination (infinite scroll)")
+    @GetMapping("/posts/{postId}/comments/cursor")
+    public ResponseEntity<com.va.v.v_app.v.dto.response.CursorPageResponse<CommentResponse>> getCommentsWithCursor(
+            @PathVariable Long postId,
+            Authentication authentication,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        String currentUserId = authentication != null ? authentication.getName() : null;
+        var comments = commentService.getCommentsForPostWithCursor(postId, currentUserId, cursor, limit);
+        return ResponseEntity.ok(comments);
+    }
+
+    @Operation(summary = "Get replies for a comment with cursor pagination (infinite scroll)")
+    @GetMapping("/comments/{commentId}/replies/cursor")
+    public ResponseEntity<com.va.v.v_app.v.dto.response.CursorPageResponse<CommentResponse>> getRepliesWithCursor(
+            @PathVariable Long commentId,
+            Authentication authentication,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        String currentUserId = authentication != null ? authentication.getName() : null;
+        var replies = commentService.getRepliesForCommentWithCursor(commentId, currentUserId, cursor, limit);
+        return ResponseEntity.ok(replies);
+    }
 }

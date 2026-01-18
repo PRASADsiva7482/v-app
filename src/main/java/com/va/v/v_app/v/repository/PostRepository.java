@@ -95,4 +95,53 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 			"WHERE p.isDeleted = false AND h.tagName IN :hashtagNames " +
 			"ORDER BY p.createdAt DESC")
 	List<Post> findByHashtagsIn(@Param("hashtagNames") java.util.Set<String> hashtagNames, Pageable pageable);
+
+	// ========== CURSOR-BASED PAGINATION (Infinite Scroll) ==========
+
+	/**
+	 * Get posts with cursor-based pagination (all posts)
+	 * Uses ID as cursor for efficient pagination without offset
+	 */
+	@Query("SELECT p FROM Post p WHERE p.isDeleted = false " +
+			"AND (:cursor IS NULL OR p.id < :cursor) " +
+			"ORDER BY p.id DESC")
+	List<Post> findWithCursor(@Param("cursor") Long cursor, Pageable pageable);
+
+	/**
+	 * Get user's posts with cursor-based pagination
+	 */
+	@Query("SELECT p FROM Post p WHERE p.userId = :userId AND p.isDeleted = false " +
+			"AND (:cursor IS NULL OR p.id < :cursor) " +
+			"ORDER BY p.id DESC")
+	List<Post> findByUserIdWithCursor(@Param("userId") String userId, @Param("cursor") Long cursor, Pageable pageable);
+
+	/**
+	 * Get posts from followed users with cursor-based pagination
+	 */
+	@Query("SELECT p FROM Post p WHERE p.userId IN :userIds AND p.isDeleted = false " +
+			"AND (:cursor IS NULL OR p.id < :cursor) " +
+			"ORDER BY p.id DESC")
+	List<Post> findByUserIdInWithCursor(@Param("userIds") List<String> userIds, @Param("cursor") Long cursor,
+			Pageable pageable);
+
+	/**
+	 * Get posts with hashtags using cursor-based pagination
+	 */
+	@Query("SELECT DISTINCT p FROM Post p " +
+			"LEFT JOIN p.postHashtags ph " +
+			"LEFT JOIN ph.hashtag h " +
+			"WHERE p.isDeleted = false AND h.tagName IN :hashtagNames " +
+			"AND (:cursor IS NULL OR p.id < :cursor) " +
+			"ORDER BY p.id DESC")
+	List<Post> findByHashtagsInWithCursor(@Param("hashtagNames") java.util.Set<String> hashtagNames,
+			@Param("cursor") Long cursor, Pageable pageable);
+
+	/**
+	 * Get recent posts with cursor-based pagination
+	 */
+	@Query("SELECT p FROM Post p WHERE p.isDeleted = false AND p.createdAt >= :since " +
+			"AND (:cursor IS NULL OR p.id < :cursor) " +
+			"ORDER BY p.id DESC")
+	List<Post> findRecentPostsWithCursor(@Param("since") java.time.LocalDateTime since, @Param("cursor") Long cursor,
+			Pageable pageable);
 }
