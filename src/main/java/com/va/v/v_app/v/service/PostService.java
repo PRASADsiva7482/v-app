@@ -9,6 +9,9 @@ import com.va.v.v_app.v.repository.PostLikeRepository;
 import com.va.v.v_app.v.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -69,7 +72,10 @@ public class PostService {
 
     /**
      * Get post by ID
+     * 
+     * Cached for 5 minutes to improve performance for frequently viewed posts
      */
+    @Cacheable(value = "crm:post", key = "#postId", unless = "#result == null")
     @Transactional(readOnly = true)
     public PostResponse getPostById(Long postId, String currentUserId) {
         Post post = postRepository.findByIdAndIsDeletedFalse(postId)
@@ -79,7 +85,10 @@ public class PostService {
 
     /**
      * Update post
+     * 
+     * Evicts post cache to ensure fresh data is fetched on next read
      */
+    @CacheEvict(value = "crm:post", key = "#postId")
     @Transactional
     public PostResponse updatePost(Long postId, String userId, UpdatePostRequest request) {
         Post post = postRepository.findByIdAndIsDeletedFalse(postId)
@@ -104,7 +113,10 @@ public class PostService {
 
     /**
      * Delete post (soft delete)
+     * 
+     * Evicts post cache since the post is being deleted
      */
+    @CacheEvict(value = "crm:post", key = "#postId")
     @Transactional
     public void deletePost(Long postId, String userId) {
         Post post = postRepository.findByIdAndIsDeletedFalse(postId)
@@ -155,7 +167,11 @@ public class PostService {
 
     /**
      * Increment view count
+     * 
+     * Evicts cache to reflect updated view count
+     * Note: For high-traffic posts, consider async cache update or delayed eviction
      */
+    @CacheEvict(value = "crm:post", key = "#postId")
     @Transactional
     public void incrementViewCount(Long postId) {
         postRepository.incrementViewCount(postId);

@@ -29,10 +29,10 @@ import java.time.Duration;
 @EnableScheduling
 public class CacheConfig {
 
-    public static final String KEYCLOAK_USERS_CACHE = "keycloakUsers";
-    public static final String USER_PROFILES_CACHE = "userProfiles";
-    public static final String POSTS_CACHE = "posts";
-    public static final String FEEDS_CACHE = "feeds";
+        public static final String KEYCLOAK_USERS_CACHE = "keycloakUsers";
+        public static final String USER_PROFILES_CACHE = "userProfiles";
+        public static final String POSTS_CACHE = "posts";
+        public static final String FEEDS_CACHE = "feeds";
 
     /**
      * Redis-based cache manager (Primary - used when Redis is available)
@@ -64,32 +64,45 @@ public class CacheConfig {
                         RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
 
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(defaultConfig)
-                .withCacheConfiguration(KEYCLOAK_USERS_CACHE,
-                        defaultConfig.entryTtl(Duration.ofHours(2))) // Keycloak users: 2 hours
-                .withCacheConfiguration(USER_PROFILES_CACHE,
-                        defaultConfig.entryTtl(Duration.ofHours(1))) // User profiles: 1 hour
-                .withCacheConfiguration(POSTS_CACHE,
-                        defaultConfig.entryTtl(Duration.ofMinutes(15))) // Posts: 15 minutes
-                .withCacheConfiguration(FEEDS_CACHE,
-                        defaultConfig.entryTtl(Duration.ofMinutes(5))) // Feeds: 5 minutes
-                .transactionAware()
-                .build();
-    }
+                GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(
+                                objectMapper);
 
-    /**
-     * Fallback in-memory cache manager (when Redis is not available)
-     */
-    @Bean
-    @ConditionalOnProperty(name = "spring.data.redis.host", matchIfMissing = true, havingValue = "false")
-    public CacheManager inMemoryCacheManager() {
-        ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(
-                KEYCLOAK_USERS_CACHE,
-                USER_PROFILES_CACHE,
-                POSTS_CACHE,
-                FEEDS_CACHE);
-        cacheManager.setAllowNullValues(false);
-        return cacheManager;
-    }
+                RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
+                                .entryTtl(Duration.ofMinutes(30)) // Default TTL: 30 minutes
+                                .serializeKeysWith(
+                                                RedisSerializationContext.SerializationPair
+                                                                .fromSerializer(new StringRedisSerializer()))
+                                .serializeValuesWith(
+                                                RedisSerializationContext.SerializationPair
+                                                                .fromSerializer(jsonSerializer))
+                                .disableCachingNullValues();
+
+                return RedisCacheManager.builder(connectionFactory)
+                                .cacheDefaults(defaultConfig)
+                                .withCacheConfiguration(KEYCLOAK_USERS_CACHE,
+                                                defaultConfig.entryTtl(Duration.ofHours(2))) // Keycloak users: 2 hours
+                                .withCacheConfiguration(USER_PROFILES_CACHE,
+                                                defaultConfig.entryTtl(Duration.ofHours(1))) // User profiles: 1 hour
+                                .withCacheConfiguration(POSTS_CACHE,
+                                                defaultConfig.entryTtl(Duration.ofMinutes(15))) // Posts: 15 minutes
+                                .withCacheConfiguration(FEEDS_CACHE,
+                                                defaultConfig.entryTtl(Duration.ofMinutes(5))) // Feeds: 5 minutes
+                                .transactionAware()
+                                .build();
+        }
+
+        /**
+         * Fallback in-memory cache manager (when Redis is not available)
+         */
+        @Bean
+        @ConditionalOnProperty(name = "spring.data.redis.host", matchIfMissing = true, havingValue = "false")
+        public CacheManager inMemoryCacheManager() {
+                ConcurrentMapCacheManager cacheManager = new ConcurrentMapCacheManager(
+                                KEYCLOAK_USERS_CACHE,
+                                USER_PROFILES_CACHE,
+                                POSTS_CACHE,
+                                FEEDS_CACHE);
+                cacheManager.setAllowNullValues(false);
+                return cacheManager;
+        }
 }

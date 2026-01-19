@@ -62,4 +62,40 @@ public class FeedController {
         Page<PostResponse> feed = feedService.getUserFeed(userId, currentUserId, pageable);
         return ResponseEntity.ok(feed);
     }
+
+    // ========== CURSOR-BASED PAGINATION (Infinite Scroll) ==========
+
+    @Operation(summary = "Get timeline feed with cursor pagination (infinite scroll)")
+    @GetMapping("/timeline/cursor")
+    public ResponseEntity<com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse>> getTimelineFeedWithCursor(
+            Authentication authentication,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        String userId = authentication.getName();
+        var feed = feedService.getTimelineFeedWithCursor(userId, cursor, limit);
+        return ResponseEntity.ok(feed);
+    }
+
+    @Operation(summary = "Get explore feed with cursor pagination (infinite scroll)")
+    @GetMapping("/explore/cursor")
+    public ResponseEntity<com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse>> getExploreFeedWithCursor(
+            Authentication authentication,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        String userId = authentication != null ? authentication.getName() : null;
+        var feed = feedService.getExploreFeedWithCursor(userId, cursor, limit);
+        return ResponseEntity.ok(feed);
+    }
+
+    @Operation(summary = "Get user's posts feed with cursor pagination (infinite scroll)")
+    @GetMapping("/user/{userId}/cursor")
+    public ResponseEntity<com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse>> getUserFeedWithCursor(
+            @PathVariable String userId,
+            Authentication authentication,
+            @RequestParam(required = false) Long cursor,
+            @RequestParam(defaultValue = "20") int limit) {
+        String currentUserId = authentication != null ? authentication.getName() : null;
+        var feed = feedService.getUserFeedWithCursor(userId, currentUserId, cursor, limit);
+        return ResponseEntity.ok(feed);
+    }
 }

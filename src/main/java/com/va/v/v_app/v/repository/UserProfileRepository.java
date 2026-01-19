@@ -33,4 +33,8 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
             "LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
             "LOWER(u.displayName) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<UserProfile> searchUsers(@Param("keyword") String keyword, Pageable pageable);
+
+    // For You Feed - Find recently created users
+    @Query("SELECT u FROM UserProfile u WHERE u.createdAt >= :since ORDER BY u.createdAt DESC")
+    List<UserProfile> findRecentUsers(@Param("since") java.time.LocalDateTime since);
 }
