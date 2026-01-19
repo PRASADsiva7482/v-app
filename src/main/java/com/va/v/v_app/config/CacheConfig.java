@@ -1,5 +1,8 @@
 package com.va.v.v_app.config;
 
+import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
@@ -33,18 +36,32 @@ public class CacheConfig {
 
     /**
      * Redis-based cache manager (Primary - used when Redis is available)
+     * Configured with JavaTimeModule and polymorphic typing for proper serialization
      */
     @Bean
     @Primary
     @ConditionalOnProperty(name = "spring.data.redis.host")
     public CacheManager redisCacheManager(RedisConnectionFactory connectionFactory) {
+        // Create ObjectMapper with JavaTimeModule for LocalDateTime support
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.registerModule(new JavaTimeModule());
+        
+        // Enable polymorphic type handling to store @class metadata as JSON property
+        // Using As.PROPERTY instead of As.WRAPPER_ARRAY for compatibility
+        objectMapper.activateDefaultTyping(
+                objectMapper.getPolymorphicTypeValidator(),
+                ObjectMapper.DefaultTyping.NON_FINAL,
+                JsonTypeInfo.As.PROPERTY);
+        
+        // Create serializer with the configured ObjectMapper
+        GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(objectMapper);
+        
         RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(30)) // Default TTL: 30 minutes
                 .serializeKeysWith(
                         RedisSerializationContext.SerializationPair.fromSerializer(new StringRedisSerializer()))
                 .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair.fromSerializer(
-                                new GenericJackson2JsonRedisSerializer()))
+                        RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
 
         return RedisCacheManager.builder(connectionFactory)

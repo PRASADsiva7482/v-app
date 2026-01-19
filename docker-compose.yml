@@ -1,0 +1,87 @@
+services:
+  # Redis Cache Server for V-App
+  # Configured for VPN access from multiple machines
+  redis:
+    image: redis:7.2-alpine
+    container_name: v-app-redis
+    restart: unless-stopped
+
+    # Port mapping - expose Redis to host network
+    # This allows VPN clients to access Redis at <VPN_SERVER_IP>:6379
+    ports:
+      - "6379:6379"
+
+    # Redis server configuration
+    # --bind 0.0.0.0: Listen on all network interfaces (allows VPN access)
+    # --protected-mode no: Disable protected mode for development (enable for production)
+    # --maxmemory 256mb: Set maximum memory limit
+    # --maxmemory-policy allkeys-lru: Evict least recently used keys when memory limit reached
+    command: >
+      redis-server --bind 0.0.0.0 --protected-mode no --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes --appendfsync everysec
+
+    # Persistent storage
+    volumes:
+      - redis-data:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+
+    # Health check
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+    # Networking
+    networks:
+      - v-app-network
+
+    # Environment variables
+    environment:
+      - TZ=Asia/Kolkata
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # Optional: Redis Commander (Web UI for Redis)
+  # Access at http://<VPN_SERVER_IP>:8081
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: v-app-redis-commander
+    restart: unless-stopped
+
+    ports:
+      - "8081:8081"
+
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+      - HTTP_USER=admin
+      - HTTP_PASSWORD=admin123
+
+    depends_on:
+      - redis
+
+    networks:
+      - v-app-network
+    # Uncomment to disable Redis Commander (recommended for production)
+    # profiles:
+    #   - debug
+
+    # Persistent volumes
+volumes:
+  redis-data:
+    driver: local
+    name: v-app-redis-data
+
+# Network configuration
+networks:
+  v-app-network:
+    driver: bridge
+    name: v-app-network

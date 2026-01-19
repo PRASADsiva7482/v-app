@@ -171,24 +171,10 @@ public class RequestProcessingTimeInterceptor implements HandlerInterceptor {
 									"Entity ID is not found for CRM DB");
 						}
 					}
-					// setting billing data source
-					if (configuration.getMappings().get("billinEntityIdDataSourceMapping") != null) {
-						if (utils.validateFiled(configuration.getMappings().get("billinEntityIdDataSourceMapping")
-								.getDynamicDetails().get("entityid-" + MDC.get(Constants.entityIdHeader)))) {
-							MDC.put(Constants.bill_db_instance,
-									configuration.getMappings().get("billinEntityIdDataSourceMapping")
-											.getDynamicDetails().get("entityid-" + MDC.get(Constants.entityIdHeader)));
-							log.info("entity-Id {} , billing-db-instance {}", MDC.get(Constants.entityIdHeader),
-									MDC.get(Constants.bill_db_instance));
-						} else {
-							// not having configured entity id
-							throw new CommonException(HttpConstants.CUSTOM_FIELD_VALIDATION,
-									"Entity ID is not found for Billing DB");
-						}
-					}
+
 				} else {
 					MDC.put(Constants.crm_db_instance, Constants.initial_db_name);
-					MDC.put(Constants.bill_db_instance, Constants.initial_db_name);
+
 				}
 			}
 
