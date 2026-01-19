@@ -30,18 +30,6 @@ public class DatasourceMap {
 		return dataSourceMap;
 	}
 
-	@Bean(name = "billingdataSourceMap")
-	public Map<String, HikariDataSource> dataBillingSourceMap() {
-		Map<String, HikariDataSource> dataSourceMap = new HashMap<>();
-		dataSourceConfiguration.getBillingdatasource()
-				.forEach(dbProp -> {
-					dataSourceMap.put(dbProp.getName(), createDataSource(dbProp));
-					log.info("Created Billing datasource: {} with pool: {}", dbProp.getName(), dbProp.getPoolName());
-				});
-		log.info("Total Billing datasources initialized: {}", dataSourceMap.size());
-		return dataSourceMap;
-	}
-
 	@Bean(name = "keycloakdataSourceMap")
 	public Map<String, HikariDataSource> dataKeycloakSourceMap() {
 		Map<String, HikariDataSource> dataSourceMap = new HashMap<>();

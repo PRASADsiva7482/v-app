@@ -141,6 +141,8 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 path.startsWith("/api-docs") ||
                 path.startsWith("/actuator") ||
                 path.equals("/error") ||
-                path.startsWith("/public");
+                path.startsWith("/public") ||
+                path.startsWith("/api/v1/media/images/") ||
+                path.startsWith("/api/v1/media/videos/");
     }
 }
