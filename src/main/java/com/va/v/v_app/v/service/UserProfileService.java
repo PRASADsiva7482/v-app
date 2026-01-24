@@ -4,6 +4,7 @@ import com.va.v.v_app.v.dto.request.UpdateProfileRequest;
 import com.va.v.v_app.v.dto.response.UserProfileResponse;
 import com.va.v.v_app.v.model.UserProfile;
 import com.va.v.v_app.v.repository.UserProfileRepository;
+import com.va.v.v_app.v.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 import org.springframework.cache.annotation.CacheEvict;
@@ -22,6 +23,7 @@ import static com.va.v.v_app.config.CacheConfig.USER_PROFILES_CACHE;
 public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
+    private final FollowRepository followRepository;
 
     /**
      * Get user profile by user ID (CACHED for 1 hour)
@@ -187,9 +189,7 @@ public class UserProfileService {
         return mapToResponse(updated);
     }
 
-    /**
-     * Increment followers count
-     */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
     @Transactional
     public void incrementFollowersCount(String userId) {
         userProfileRepository.findByUserId(userId).ifPresent(profile -> {
@@ -201,6 +201,7 @@ public class UserProfileService {
     /**
      * Decrement followers count
      */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
     @Transactional
     public void decrementFollowersCount(String userId) {
         userProfileRepository.findByUserId(userId).ifPresent(profile -> {
@@ -212,6 +213,7 @@ public class UserProfileService {
     /**
      * Increment following count
      */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
     @Transactional
     public void incrementFollowingCount(String userId) {
         userProfileRepository.findByUserId(userId).ifPresent(profile -> {
@@ -223,6 +225,7 @@ public class UserProfileService {
     /**
      * Decrement following count
      */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
     @Transactional
     public void decrementFollowingCount(String userId) {
         userProfileRepository.findByUserId(userId).ifPresent(profile -> {
@@ -234,6 +237,7 @@ public class UserProfileService {
     /**
      * Increment posts count
      */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
     @Transactional
     public void incrementPostsCount(String userId) {
         userProfileRepository.findByUserId(userId).ifPresent(profile -> {
@@ -245,6 +249,7 @@ public class UserProfileService {
     /**
      * Decrement posts count
      */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
     @Transactional
     public void decrementPostsCount(String userId) {
         userProfileRepository.findByUserId(userId).ifPresent(profile -> {
@@ -270,6 +275,13 @@ public class UserProfileService {
      */
     private UserProfileResponse mapToResponse(UserProfile profile, String currentUserId) {
         boolean isOwnProfile = currentUserId != null && currentUserId.equals(profile.getUserId());
+        boolean isFollowing = false;
+        if (currentUserId != null && !isOwnProfile) {
+            isFollowing = followRepository.existsByFollowerIdAndFollowingId(currentUserId, profile.getUserId());
+            log.debug("Follow check: follower={}, following={}, result={}", currentUserId, profile.getUserId(),
+                    isFollowing);
+        }
+
         return UserProfileResponse.builder()
                 .id(profile.getId())
                 .userId(profile.getUserId())
@@ -291,6 +303,7 @@ public class UserProfileService {
                 .createdAt(profile.getCreatedAt())
                 .updatedAt(profile.getUpdatedAt())
                 .isOwnProfile(isOwnProfile)
+                .isFollowing(isFollowing)
                 .build();
     }
 
