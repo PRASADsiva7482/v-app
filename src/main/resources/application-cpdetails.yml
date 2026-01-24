@@ -3,7 +3,8 @@
 cpDetails:
   crossOrigin:
     allowAll: true
-    allowedIPs: http://localhost:3000
+    # Allow all origins for VPN access - use specific IPs in production
+    allowedIPs: "*"
   # Customer Management Service
   customerService:
     msApplicationName: CustomerManagement
