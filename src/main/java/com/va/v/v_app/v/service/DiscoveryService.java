@@ -3,8 +3,10 @@ package com.va.v.v_app.v.service;
 import com.va.v.v_app.v.dto.response.PlatformStatsResponse;
 import com.va.v.v_app.v.dto.response.PostResponse;
 import com.va.v.v_app.v.dto.response.UserSuggestionResponse;
+import com.va.v.v_app.v.dto.response.SmartSuggestionResponse;
 import com.va.v.v_app.v.model.Post;
 import com.va.v.v_app.v.model.UserProfile;
+import com.va.v.v_app.v.model.Follow;
 import com.va.v.v_app.v.repository.FollowRepository;
 import com.va.v.v_app.v.repository.PostRepository;
 import com.va.v.v_app.v.repository.UserProfileRepository;
@@ -163,6 +165,109 @@ public class DiscoveryService {
         // Convert to response
         return usersWithScores.stream()
                 .map(uws -> convertToUserSuggestion(uws.profile, currentUserId, uws.score))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get smart user suggestions based on social network (mutual followers)
+     * Logic: Suggest users followed by the people the current user is already
+     * following.
+     */
+    @Transactional(readOnly = true)
+    public List<SmartSuggestionResponse> getSmartUserSuggestions(String currentUserId, int limit) {
+        log.debug("Fetching smart suggestions for user: {} with limit: {}", currentUserId, limit);
+
+        if (currentUserId == null) {
+            // Fallback to popular users if not logged in
+            return getPopularUsers(null, limit).stream()
+                    .map(pop -> SmartSuggestionResponse.builder()
+                            .userId(pop.getUserId())
+                            .userName(pop.getUserName())
+                            .displayName(pop.getDisplayName())
+                            .bio(pop.getBio())
+                            .profilePictureUrl(pop.getProfilePictureUrl())
+                            .followersCount(pop.getFollowersCount())
+                            .followingCount(pop.getFollowingCount())
+                            .postsCount(pop.getPostsCount())
+                            .isFollowing(false)
+                            .suggestionReason("Popular on platform")
+                            .relevanceScore(pop.getPopularityScore())
+                            .build())
+                    .collect(Collectors.toList());
+        }
+
+        // 1. Get IDs of people the user follows AND people who follow the user
+        List<String> userFollowingIds = followRepository.findFollowingUserIds(currentUserId);
+
+        Pageable pageable = PageRequest.of(0, 100);
+        List<String> userFollowerIds = followRepository.findByFollowingId(currentUserId, pageable)
+                .map(Follow::getFollowerId)
+                .getContent();
+
+        // Combine seeds for suggestions
+        java.util.Set<String> seedIds = new java.util.HashSet<>(userFollowingIds);
+        seedIds.addAll(userFollowerIds);
+
+        // Limit seeds to avoid performance issues
+        List<String> limitedSeeds = seedIds.stream().limit(100).collect(Collectors.toList());
+
+        java.util.Map<String, List<String>> suggestedUserToMutuals = new java.util.HashMap<>();
+
+        for (String seedId : limitedSeeds) {
+            List<String> followedBySeed = followRepository.findFollowingUserIds(seedId);
+            for (String suggestedId : followedBySeed) {
+                // Exclude current user and people already followed
+                if (suggestedId.equals(currentUserId) || userFollowingIds.contains(suggestedId)) {
+                    continue;
+                }
+
+                UserProfile seedProfile = userProfileRepository.findByUserId(seedId).orElse(null);
+                String seedName = seedProfile != null ? seedProfile.getDisplayName() : seedId;
+
+                suggestedUserToMutuals.computeIfAbsent(suggestedId, k -> new ArrayList<>()).add(seedName);
+            }
+        }
+
+        // 3. Convert to response and sort
+        return suggestedUserToMutuals.entrySet().stream()
+                .map(entry -> {
+                    String userId = entry.getKey();
+                    List<String> mutualNames = entry.getValue();
+                    UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
+
+                    if (profile == null)
+                        return null;
+
+                    String reason;
+                    if (mutualNames.size() == 1) {
+                        reason = "Followed by " + mutualNames.get(0);
+                    } else {
+                        reason = "Followed by " + mutualNames.get(0) + " and " + (mutualNames.size() - 1)
+                                + " others you know";
+                    }
+
+                    boolean isFollowing = currentUserId != null
+                            && followRepository.existsByFollowerIdAndFollowingId(currentUserId, profile.getUserId());
+
+                    return SmartSuggestionResponse.builder()
+                            .userId(profile.getUserId())
+                            .userName(profile.getUsername())
+                            .displayName(profile.getDisplayName())
+                            .bio(profile.getBio())
+                            .profilePictureUrl(profile.getProfilePictureUrl())
+                            .followersCount(followRepository.countByFollowingId(userId))
+                            .followingCount(followRepository.countByFollowerId(userId))
+                            .postsCount(postRepository.countByUserIdAndIsDeletedFalse(userId))
+                            .isFollowing(isFollowing)
+                            .mutualFollowersCount(mutualNames.size())
+                            .mutualFollowerNames(mutualNames.stream().limit(3).collect(Collectors.toList()))
+                            .suggestionReason(reason)
+                            .relevanceScore((double) mutualNames.size())
+                            .build();
+                })
+                .filter(java.util.Objects::nonNull)
+                .sorted((a, b) -> Double.compare(b.getRelevanceScore(), a.getRelevanceScore()))
+                .limit(limit)
                 .collect(Collectors.toList());
     }
 

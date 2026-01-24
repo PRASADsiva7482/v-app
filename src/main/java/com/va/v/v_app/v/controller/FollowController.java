@@ -51,9 +51,11 @@ public class FollowController {
     public ResponseEntity<Page<UserProfileResponse>> getFollowers(
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        String currentUserId = authentication != null ? authentication.getName() : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<UserProfileResponse> followers = followService.getFollowers(userId, pageable);
+        Page<UserProfileResponse> followers = followService.getFollowers(userId, pageable, currentUserId);
         return ResponseEntity.ok(followers);
     }
 
@@ -62,9 +64,11 @@ public class FollowController {
     public ResponseEntity<Page<UserProfileResponse>> getFollowing(
             @PathVariable String userId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size) {
+            @RequestParam(defaultValue = "20") int size,
+            Authentication authentication) {
+        String currentUserId = authentication != null ? authentication.getName() : null;
         Pageable pageable = PageRequest.of(page, size);
-        Page<UserProfileResponse> following = followService.getFollowing(userId, pageable);
+        Page<UserProfileResponse> following = followService.getFollowing(userId, pageable, currentUserId);
         return ResponseEntity.ok(following);
     }
 

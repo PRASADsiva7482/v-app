@@ -3,6 +3,7 @@ package com.va.v.v_app.v.controller;
 import com.va.v.v_app.v.dto.response.PlatformStatsResponse;
 import com.va.v.v_app.v.dto.response.PostResponse;
 import com.va.v.v_app.v.dto.response.UserSuggestionResponse;
+import com.va.v.v_app.v.dto.response.SmartSuggestionResponse;
 import com.va.v.v_app.v.service.DiscoveryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -44,6 +45,16 @@ public class DiscoveryController {
         String userId = authentication != null ? authentication.getName() : null;
         List<UserSuggestionResponse> popular = discoveryService.getPopularUsers(userId, limit);
         return ResponseEntity.ok(popular);
+    }
+
+    @Operation(summary = "Get smart user suggestions based on social network")
+    @GetMapping("/suggestions/users")
+    public ResponseEntity<List<SmartSuggestionResponse>> getSmartSuggestions(
+            Authentication authentication,
+            @RequestParam(defaultValue = "10") int limit) {
+        String userId = authentication != null ? authentication.getName() : null;
+        List<SmartSuggestionResponse> suggestions = discoveryService.getSmartUserSuggestions(userId, limit);
+        return ResponseEntity.ok(suggestions);
     }
 
     @Operation(summary = "Get platform statistics")

@@ -67,18 +67,18 @@ public class FollowService {
      * Get followers of a user
      */
     @Transactional(readOnly = true)
-    public Page<UserProfileResponse> getFollowers(String userId, Pageable pageable) {
+    public Page<UserProfileResponse> getFollowers(String userId, Pageable pageable, String currentUserId) {
         Page<Follow> follows = followRepository.findByFollowingId(userId, pageable);
-        return follows.map(follow -> userProfileService.getProfileByUserId(follow.getFollowerId()));
+        return follows.map(follow -> userProfileService.getProfileByUserId(follow.getFollowerId(), currentUserId));
     }
 
     /**
      * Get users that a user is following
      */
     @Transactional(readOnly = true)
-    public Page<UserProfileResponse> getFollowing(String userId, Pageable pageable) {
+    public Page<UserProfileResponse> getFollowing(String userId, Pageable pageable, String currentUserId) {
         Page<Follow> follows = followRepository.findByFollowerId(userId, pageable);
-        return follows.map(follow -> userProfileService.getProfileByUserId(follow.getFollowingId()));
+        return follows.map(follow -> userProfileService.getProfileByUserId(follow.getFollowingId(), currentUserId));
     }
 
     /**

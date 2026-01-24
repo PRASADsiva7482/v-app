@@ -38,17 +38,6 @@ public class SecurityContextUtil {
     }
 
     /**
-     * Get service ID from current request
-     */
-    public static String getCurrentServiceId() {
-        HttpServletRequest request = getCurrentRequest();
-        if (request != null) {
-            return ServiceIdDecryptionFilter.getServiceId(request);
-        }
-        return null;
-    }
-
-    /**
      * Get current HTTP request
      */
     public static HttpServletRequest getCurrentRequest() {

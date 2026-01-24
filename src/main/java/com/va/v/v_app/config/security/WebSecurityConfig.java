@@ -36,15 +36,6 @@ public class WebSecurityConfig {
                 return new JwtRequestFilter(keycloakTokenValidator);
         }
 
-        /**
-         * Service ID Decryption Filter Bean
-         */
-        @Bean
-        public ServiceIdDecryptionFilter serviceIdDecryptionFilter() {
-                log.info("Creating ServiceIdDecryptionFilter bean");
-                return new ServiceIdDecryptionFilter();
-        }
-
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http,
                         KeycloakTokenValidator keycloakTokenValidator) throws Exception {
@@ -82,8 +73,6 @@ public class WebSecurityConfig {
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                                 // Add custom filters
-                                .addFilterBefore(serviceIdDecryptionFilter(),
-                                                UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(jwtRequestFilter(keycloakTokenValidator),
                                                 UsernamePasswordAuthenticationFilter.class);
 
@@ -109,8 +98,6 @@ public class WebSecurityConfig {
                 configuration.setAllowedHeaders(Arrays.asList(
                                 "Authorization",
                                 "Content-Type",
-                                "X-Service-Id",
-                                "X-Encrypted-Service-Id",
                                 "X-Requested-With",
                                 "Accept",
                                 "Origin",
@@ -120,8 +107,7 @@ public class WebSecurityConfig {
                 // Expose headers
                 configuration.setExposedHeaders(Arrays.asList(
                                 "Authorization",
-                                "Content-Type",
-                                "X-Service-Id"));
+                                "Content-Type"));
 
                 // Allow credentials
                 configuration.setAllowCredentials(true);
