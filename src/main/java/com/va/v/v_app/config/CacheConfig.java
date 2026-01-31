@@ -64,32 +64,19 @@ public class CacheConfig {
                         RedisSerializationContext.SerializationPair.fromSerializer(jsonSerializer))
                 .disableCachingNullValues();
 
-                GenericJackson2JsonRedisSerializer jsonSerializer = new GenericJackson2JsonRedisSerializer(
-                                objectMapper);
-
-                RedisCacheConfiguration defaultConfig = RedisCacheConfiguration.defaultCacheConfig()
-                                .entryTtl(Duration.ofMinutes(30)) // Default TTL: 30 minutes
-                                .serializeKeysWith(
-                                                RedisSerializationContext.SerializationPair
-                                                                .fromSerializer(new StringRedisSerializer()))
-                                .serializeValuesWith(
-                                                RedisSerializationContext.SerializationPair
-                                                                .fromSerializer(jsonSerializer))
-                                .disableCachingNullValues();
-
-                return RedisCacheManager.builder(connectionFactory)
-                                .cacheDefaults(defaultConfig)
-                                .withCacheConfiguration(KEYCLOAK_USERS_CACHE,
-                                                defaultConfig.entryTtl(Duration.ofHours(2))) // Keycloak users: 2 hours
-                                .withCacheConfiguration(USER_PROFILES_CACHE,
-                                                defaultConfig.entryTtl(Duration.ofHours(1))) // User profiles: 1 hour
-                                .withCacheConfiguration(POSTS_CACHE,
-                                                defaultConfig.entryTtl(Duration.ofMinutes(15))) // Posts: 15 minutes
-                                .withCacheConfiguration(FEEDS_CACHE,
-                                                defaultConfig.entryTtl(Duration.ofMinutes(5))) // Feeds: 5 minutes
-                                .transactionAware()
-                                .build();
-        }
+        return RedisCacheManager.builder(connectionFactory)
+                .cacheDefaults(defaultConfig)
+                .withCacheConfiguration(KEYCLOAK_USERS_CACHE,
+                        defaultConfig.entryTtl(Duration.ofHours(2))) // Keycloak users: 2 hours
+                .withCacheConfiguration(USER_PROFILES_CACHE,
+                        defaultConfig.entryTtl(Duration.ofHours(1))) // User profiles: 1 hour
+                .withCacheConfiguration(POSTS_CACHE,
+                        defaultConfig.entryTtl(Duration.ofMinutes(15))) // Posts: 15 minutes
+                .withCacheConfiguration(FEEDS_CACHE,
+                        defaultConfig.entryTtl(Duration.ofMinutes(5))) // Feeds: 5 minutes
+                .transactionAware()
+                .build();
+    }
 
         /**
          * Fallback in-memory cache manager (when Redis is not available)

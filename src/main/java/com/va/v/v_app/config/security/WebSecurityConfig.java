@@ -10,6 +10,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.beans.factory.annotation.Autowired;
+import com.va.v.v_app.config.payload.PayloadEncryptionFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -34,6 +36,19 @@ public class WebSecurityConfig {
         public JwtRequestFilter jwtRequestFilter(KeycloakTokenValidator keycloakTokenValidator) {
                 log.info("Creating JwtRequestFilter bean with Keycloak validation");
                 return new JwtRequestFilter(keycloakTokenValidator);
+        }
+        @Bean
+        public PayloadEncryptionFilter payloadEncryptionFilter() {
+                return new PayloadEncryptionFilter();
+        }
+
+        @Bean
+        public org.springframework.boot.web.servlet.FilterRegistrationBean<PayloadEncryptionFilter> registration(
+                        PayloadEncryptionFilter filter) {
+                org.springframework.boot.web.servlet.FilterRegistrationBean<PayloadEncryptionFilter> registration = new org.springframework.boot.web.servlet.FilterRegistrationBean<>(
+                                filter);
+                registration.setEnabled(false);
+                return registration;
         }
 
         @Bean
@@ -73,6 +88,8 @@ public class WebSecurityConfig {
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                                 // Add custom filters
+                                .addFilterBefore(payloadEncryptionFilter(),
+                                                UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(jwtRequestFilter(keycloakTokenValidator),
                                                 UsernamePasswordAuthenticationFilter.class);
 
