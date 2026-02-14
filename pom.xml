@@ -190,6 +190,12 @@
 			<artifactId>gson</artifactId>
 		</dependency>
 		
+		<!-- WebSocket for real-time chat -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-websocket</artifactId>
+		</dependency>
+
 		<!-- Redis for caching (Performance optimization) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

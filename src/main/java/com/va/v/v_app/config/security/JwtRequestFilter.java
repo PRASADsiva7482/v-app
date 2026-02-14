@@ -143,6 +143,7 @@ public class JwtRequestFilter extends OncePerRequestFilter {
                 path.equals("/error") ||
                 path.startsWith("/public") ||
                 path.startsWith("/api/v1/media/images/") ||
-                path.startsWith("/api/v1/media/videos/");
+                path.startsWith("/api/v1/media/videos/") ||
+                path.startsWith("/ws"); // WebSocket handshake handled by STOMP auth
     }
 }

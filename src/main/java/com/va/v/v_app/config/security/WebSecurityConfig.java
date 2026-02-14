@@ -62,6 +62,7 @@ public class WebSecurityConfig {
                                                                                            // images
                                                                 "/api/v1/media/videos/**", // Allow public access to
                                                                                            // videos
+                                                                "/ws/**", // WebSocket handshake
                                                                 "/api/test/**" // Test endpoints for development
                                                 ).permitAll()
 
