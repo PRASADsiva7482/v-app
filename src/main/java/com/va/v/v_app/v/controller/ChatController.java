@@ -1,18 +1,26 @@
 package com.va.v.v_app.v.controller;
 
 import com.va.v.v_app.config.security.SecurityContextUtil;
+import com.va.v.v_app.v.dto.request.SendMessageRequest;
 import com.va.v.v_app.v.dto.request.StartConversationRequest;
 import com.va.v.v_app.v.dto.response.ConversationResponse;
 import com.va.v.v_app.v.dto.response.MessageResponse;
+import com.va.v.v_app.v.model.Media;
 import com.va.v.v_app.v.service.ChatMessageService;
 import com.va.v.v_app.v.service.ConversationService;
+import com.va.v.v_app.v.service.MediaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST controller for Chat.
@@ -24,6 +32,8 @@ import java.util.List;
  * Message history │ GET /api/v1/chat/messages/{convId} │ REST (pagination)
  * Edit message │ PUT /api/v1/chat/messages/{msgId} │ REST
  * Delete message │ DELETE /api/v1/chat/messages/{msgId} │ REST
+ * Upload chat media │ POST /api/v1/chat/media/upload │ REST (multipart)
+ * Send with media │ POST /api/v1/chat/messages/send │ REST (JSON)
  *
  * 🚫 NO polling APIs
  * 🚫 NO "check for updates" APIs
@@ -38,6 +48,7 @@ public class ChatController {
 
     private final ConversationService conversationService;
     private final ChatMessageService chatMessageService;
+    private final MediaService mediaService;
 
     /**
      * Get all conversations for the current user.
@@ -106,5 +117,49 @@ public class ChatController {
         String userId = SecurityContextUtil.getCurrentUsername();
         chatMessageService.deleteMessage(messageId, userId);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Upload media for a chat message.
+     * Returns the uploaded file metadata (URL, type, size) that the client
+     * then includes in the SendMessageRequest when sending the message.
+     *
+     * Flow:
+     * 1. Client uploads file via this endpoint
+     * 2. Client receives fileUrl, fileName, fileType, fileSize
+     * 3. Client sends message via WebSocket or REST with attachment info
+     */
+    @PostMapping(value = "/media/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<Map<String, Object>> uploadChatMedia(
+            @RequestParam("file") MultipartFile file) {
+        String userId = SecurityContextUtil.getCurrentUsername();
+        try {
+            Media media = mediaService.uploadMedia(file, userId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("fileUrl", media.getFileUrl());
+            response.put("fileName", media.getFileName());
+            response.put("fileType", file.getContentType());
+            response.put("fileSize", media.getFileSize());
+            response.put("thumbnailUrl", media.getThumbnailUrl());
+            response.put("mediaId", media.getId());
+
+            return ResponseEntity.ok(response);
+        } catch (IOException e) {
+            log.error("Error uploading chat media: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload chat media: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Send a message with attachments via REST (for media messages).
+     * This is an alternative to WebSocket for messages that need file uploads.
+     */
+    @PostMapping("/messages/send")
+    public ResponseEntity<MessageResponse> sendMessage(
+            @RequestBody SendMessageRequest request) {
+        String userId = SecurityContextUtil.getCurrentUsername();
+        MessageResponse response = chatMessageService.sendMessage(userId, request);
+        return ResponseEntity.ok(response);
     }
 }

@@ -28,7 +28,7 @@ public class Media {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "post_id", nullable = false)
+    @JoinColumn(name = "post_id", nullable = true)
     private Post post;
 
     @Enumerated(EnumType.STRING)

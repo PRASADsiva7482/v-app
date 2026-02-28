@@ -73,6 +73,22 @@ public class ChatMessageService {
                 .build();
         message = messageRepository.save(message);
 
+        // Save attachments if provided
+        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
+            for (SendMessageRequest.AttachmentInfo attachInfo : request.getAttachments()) {
+                MessageAttachment attachment = MessageAttachment.builder()
+                        .message(message)
+                        .fileUrl(attachInfo.getFileUrl())
+                        .fileName(attachInfo.getFileName())
+                        .fileType(attachInfo.getFileType())
+                        .fileSize(attachInfo.getFileSize() != null ? attachInfo.getFileSize() : 0L)
+                        .thumbnailUrl(attachInfo.getThumbnailUrl())
+                        .build();
+                attachmentRepository.save(attachment);
+                message.getAttachments().add(attachment);
+            }
+        }
+
         // Update conversation timestamp
         conversationRepository.findById(request.getConversationId())
                 .ifPresent(conv -> {
