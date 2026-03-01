@@ -144,4 +144,9 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 			"ORDER BY p.id DESC")
 	List<Post> findRecentPostsWithCursor(@Param("since") java.time.LocalDateTime since, @Param("cursor") Long cursor,
 			Pageable pageable);
+
+	// Account deletion
+	List<Post> findAllByUserId(String userId);
+
+	void deleteByUserId(String userId);
 }

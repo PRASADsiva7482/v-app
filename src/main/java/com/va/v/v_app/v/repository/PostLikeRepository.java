@@ -30,4 +30,7 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
     // Batch loading for multiple posts (prevents N+1 queries)
     @Query("SELECT pl FROM PostLike pl WHERE pl.postId IN :postIds AND pl.userId = :userId")
     List<PostLike> findByPostIdInAndUserId(@Param("postIds") List<Long> postIds, @Param("userId") String userId);
+
+    // Account deletion
+    void deleteByUserId(String userId);
 }

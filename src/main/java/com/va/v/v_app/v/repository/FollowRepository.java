@@ -35,4 +35,9 @@ public interface FollowRepository extends JpaRepository<Follow, Long> {
 
     @Query("SELECT f.followingId FROM Follow f WHERE f.followerId = :userId")
     List<String> findFollowingUserIds(@Param("userId") String userId);
+
+    // Account deletion - remove all follow relationships
+    void deleteByFollowerId(String followerId);
+
+    void deleteByFollowingId(String followingId);
 }

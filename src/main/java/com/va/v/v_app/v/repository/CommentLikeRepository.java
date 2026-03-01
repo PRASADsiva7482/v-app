@@ -23,4 +23,7 @@ public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> 
     Page<CommentLike> findByCommentId(Long commentId, Pageable pageable);
 
     long countByCommentId(Long commentId);
+
+    // Account deletion
+    void deleteByUserId(String userId);
 }

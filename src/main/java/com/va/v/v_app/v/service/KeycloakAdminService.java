@@ -80,12 +80,10 @@ public class KeycloakAdminService {
 
         String token = getAdminToken();
         if (token == null) {
-            log.error("Cannot delete user: failed to get admin token");
-            // For development/demonstration if Keycloak admin is not properly configured
-            // but we still want to simulate success:
-            log.warn("SIMULATED SUCCESS: User {} deleted from Keycloak (Token generation failed or missing roles)",
-                    userId);
-            return true;
+            log.error("Cannot delete user {}: failed to get admin token. "
+                    + "Ensure the client '{}' has 'manage-users' role in Keycloak Service Account Roles.",
+                    userId, clientId);
+            return false;
         }
 
         String deleteUrl = serverUrl + "/admin/realms/" + realm + "/users/" + userId;
@@ -108,10 +106,10 @@ public class KeycloakAdminService {
             return true;
         } catch (Exception e) {
             log.error("Failed to delete user {} from Keycloak: {}", userId, e.getMessage());
+            return false;
         }
 
-        // Simulating success for the sake of the UX if the client doesn't have proper
-        // admin permissions set up
-        return true;
+        log.error("Unexpected state: delete user {} from Keycloak did not succeed", userId);
+        return false;
     }
 }
