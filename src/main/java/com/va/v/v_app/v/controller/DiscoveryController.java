@@ -8,7 +8,7 @@ import com.va.v.v_app.v.service.DiscoveryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +21,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/v1/discovery")
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 @Tag(name = "Discovery", description = "Discovery and trending content APIs")
 public class DiscoveryController {
 

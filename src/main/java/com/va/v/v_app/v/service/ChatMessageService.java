@@ -6,6 +6,8 @@ import com.va.v.v_app.v.dto.response.MessageResponse;
 import com.va.v.v_app.v.dto.response.ReadReceiptEvent;
 import com.va.v.v_app.v.model.*;
 import com.va.v.v_app.v.repository.*;
+import com.va.v.v_app.v.exception.ResourceNotFoundException;
+import com.va.v.v_app.v.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -58,7 +60,7 @@ public class ChatMessageService {
         // Validate sender is a participant
         if (!participantRepository.existsByConversationIdAndUserIdAndLeftAtIsNull(
                 request.getConversationId(), senderUsername)) {
-            throw new RuntimeException("User is not a participant of this conversation");
+            throw new UnauthorizedException("You are not a participant of this conversation");
         }
 
         // Build and persist message
@@ -159,7 +161,7 @@ public class ChatMessageService {
     public Page<MessageResponse> getMessages(Long conversationId, String userId, int page, int size) {
         // Verify user is participant
         if (!participantRepository.existsByConversationIdAndUserIdAndLeftAtIsNull(conversationId, userId)) {
-            throw new RuntimeException("User is not a participant of this conversation");
+            throw new UnauthorizedException("You are not a participant of this conversation");
         }
 
         Pageable pageable = PageRequest.of(page, size);
@@ -272,10 +274,10 @@ public class ChatMessageService {
     @Transactional
     public MessageResponse editMessage(Long messageId, String userId, String newContent) {
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("Message not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Message", "id", messageId));
 
         if (!message.getSenderId().equals(userId)) {
-            throw new RuntimeException("You can only edit your own messages");
+            throw new UnauthorizedException("message", "edit");
         }
 
         message.setContent(newContent);
@@ -302,10 +304,10 @@ public class ChatMessageService {
     @Transactional
     public void deleteMessage(Long messageId, String userId) {
         Message message = messageRepository.findById(messageId)
-                .orElseThrow(() -> new RuntimeException("Message not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Message", "id", messageId));
 
         if (!message.getSenderId().equals(userId)) {
-            throw new RuntimeException("You can only delete your own messages");
+            throw new UnauthorizedException("message", "delete");
         }
 
         message.setIsDeleted(true);

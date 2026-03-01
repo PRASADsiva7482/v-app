@@ -4,7 +4,7 @@ import com.va.v.v_app.v.dto.response.*;
 import com.va.v.v_app.v.model.*;
 import com.va.v.v_app.v.repository.*;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -21,7 +21,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 @Transactional(readOnly = true)
 public class ExploreService {
 

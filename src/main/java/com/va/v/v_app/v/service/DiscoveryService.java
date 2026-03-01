@@ -11,7 +11,7 @@ import com.va.v.v_app.v.repository.FollowRepository;
 import com.va.v.v_app.v.repository.PostRepository;
 import com.va.v.v_app.v.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class DiscoveryService {
 
     private final PostRepository postRepository;

@@ -4,8 +4,9 @@ import com.va.v.v_app.v.dto.response.FollowStatusResponse;
 import com.va.v.v_app.v.dto.response.UserProfileResponse;
 import com.va.v.v_app.v.model.Follow;
 import com.va.v.v_app.v.repository.FollowRepository;
+import com.va.v.v_app.v.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class FollowService {
 
     private final FollowRepository followRepository;
@@ -28,11 +29,11 @@ public class FollowService {
     @Transactional
     public void followUser(String followerId, String followingId) {
         if (followerId.equals(followingId)) {
-            throw new RuntimeException("You cannot follow yourself");
+            throw new BusinessException("SELF_FOLLOW", "You cannot follow yourself");
         }
 
         if (followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)) {
-            throw new RuntimeException("You are already following this user");
+            throw new BusinessException("ALREADY_FOLLOWING", "You are already following this user");
         }
 
         Follow follow = Follow.builder()
@@ -53,7 +54,7 @@ public class FollowService {
     @Transactional
     public void unfollowUser(String followerId, String followingId) {
         if (!followRepository.existsByFollowerIdAndFollowingId(followerId, followingId)) {
-            throw new RuntimeException("You are not following this user");
+            throw new BusinessException("NOT_FOLLOWING", "You are not following this user");
         }
 
         followRepository.deleteByFollowerIdAndFollowingId(followerId, followingId);

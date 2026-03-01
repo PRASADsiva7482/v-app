@@ -1,6 +1,7 @@
 package com.va.v.v_app.config.security;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -19,7 +20,10 @@ import java.util.List;
 
 /**
  * Web Security Configuration
- * Configures Spring Security with JWT authentication
+ * 
+ * Fixes applied:
+ * - B-13: CORS now uses configurable allowed origins instead of wildcard "*"
+ * - B-14: Removed /api/test/** from permitted endpoints
  */
 @Slf4j
 @Configuration
@@ -28,8 +32,13 @@ import java.util.List;
 public class WebSecurityConfig {
 
         /**
-         * JWT Request Filter Bean
+         * B-13: CORS origins from config, with safe defaults.
+         * Set in application.properties:
+         * cors.allowed-origins=http://localhost:3000,http://localhost:5173
          */
+        @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:5173}")
+        private String allowedOrigins;
+
         @Bean
         public JwtRequestFilter jwtRequestFilter(KeycloakTokenValidator keycloakTokenValidator) {
                 log.info("Creating JwtRequestFilter bean with Keycloak validation");
@@ -42,15 +51,9 @@ public class WebSecurityConfig {
                 log.info("Configuring security filter chain");
 
                 http
-                                // Disable CSRF for stateless API
                                 .csrf(AbstractHttpConfigurer::disable)
-
-                                // Configure CORS
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
-
-                                // Configure authorization
                                 .authorizeHttpRequests(auth -> auth
-                                                // Public endpoints - no authentication required
                                                 .requestMatchers(
                                                                 "/swagger-ui/**",
                                                                 "/swagger-ui.html",
@@ -58,22 +61,15 @@ public class WebSecurityConfig {
                                                                 "/actuator/**",
                                                                 "/error",
                                                                 "/public/**",
-                                                                "/api/v1/media/images/**", // Allow public access to
-                                                                                           // images
-                                                                "/api/v1/media/videos/**", // Allow public access to
-                                                                                           // videos
-                                                                "/ws/**", // WebSocket handshake
-                                                                "/api/test/**" // Test endpoints for development
+                                                                "/api/v1/media/images/**",
+                                                                "/api/v1/media/videos/**",
+                                                                "/ws/**"
+                                                // B-14: REMOVED "/api/test/**" — test endpoints
+                                                // should NOT be exposed in production
                                                 ).permitAll()
-
-                                                // All other endpoints require authentication
                                                 .anyRequest().authenticated())
-
-                                // Stateless session management
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
-                                // Add custom filters
                                 .addFilterBefore(jwtRequestFilter(keycloakTokenValidator),
                                                 UsernamePasswordAuthenticationFilter.class);
 
@@ -82,20 +78,22 @@ public class WebSecurityConfig {
         }
 
         /**
-         * CORS Configuration
+         * B-13: CORS configuration with explicit allowed origins.
+         * In production, set cors.allowed-origins to your actual frontend domain(s).
          */
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
 
-                // Allow all origins in development (configure properly for production)
-                configuration.setAllowedOriginPatterns(List.of("*"));
+                // B-13: Parse allowed origins from config instead of wildcard
+                List<String> origins = Arrays.asList(allowedOrigins.split(","));
+                configuration.setAllowedOrigins(origins);
 
-                // Allow common HTTP methods
+                log.info("CORS configured with allowed origins: {}", origins);
+
                 configuration.setAllowedMethods(Arrays.asList(
                                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
-                // Allow common headers
                 configuration.setAllowedHeaders(Arrays.asList(
                                 "Authorization",
                                 "Content-Type",
@@ -105,15 +103,11 @@ public class WebSecurityConfig {
                                 "Access-Control-Request-Method",
                                 "Access-Control-Request-Headers"));
 
-                // Expose headers
                 configuration.setExposedHeaders(Arrays.asList(
                                 "Authorization",
                                 "Content-Type"));
 
-                // Allow credentials
                 configuration.setAllowCredentials(true);
-
-                // Max age
                 configuration.setMaxAge(3600L);
 
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

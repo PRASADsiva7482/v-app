@@ -5,8 +5,9 @@ import com.va.v.v_app.v.dto.response.UserProfileResponse;
 import com.va.v.v_app.v.model.CommentLike;
 import com.va.v.v_app.v.model.PostLike;
 import com.va.v.v_app.v.repository.*;
+import com.va.v.v_app.v.exception.BusinessException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -17,7 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class LikeService {
 
     private final PostLikeRepository postLikeRepository;
@@ -32,7 +33,7 @@ public class LikeService {
     @Transactional
     public void likePost(Long postId, String userId) {
         if (postLikeRepository.existsByPostIdAndUserId(postId, userId)) {
-            throw new RuntimeException("You have already liked this post");
+            throw new BusinessException("ALREADY_LIKED", "You have already liked this post");
         }
 
         PostLike like = PostLike.builder()
@@ -52,7 +53,7 @@ public class LikeService {
     @Transactional
     public void unlikePost(Long postId, String userId) {
         if (!postLikeRepository.existsByPostIdAndUserId(postId, userId)) {
-            throw new RuntimeException("You haven't liked this post");
+            throw new BusinessException("NOT_LIKED", "You haven't liked this post");
         }
 
         postLikeRepository.deleteByPostIdAndUserId(postId, userId);
@@ -76,7 +77,7 @@ public class LikeService {
     @Transactional
     public void likeComment(Long commentId, String userId) {
         if (commentLikeRepository.existsByCommentIdAndUserId(commentId, userId)) {
-            throw new RuntimeException("You have already liked this comment");
+            throw new BusinessException("ALREADY_LIKED", "You have already liked this comment");
         }
 
         CommentLike like = CommentLike.builder()
@@ -96,7 +97,7 @@ public class LikeService {
     @Transactional
     public void unlikeComment(Long commentId, String userId) {
         if (!commentLikeRepository.existsByCommentIdAndUserId(commentId, userId)) {
-            throw new RuntimeException("You haven't liked this comment");
+            throw new BusinessException("NOT_LIKED", "You haven't liked this comment");
         }
 
         commentLikeRepository.deleteByCommentIdAndUserId(commentId, userId);

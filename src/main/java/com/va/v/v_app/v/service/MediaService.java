@@ -5,8 +5,10 @@ import com.va.v.v_app.v.model.Media;
 import com.va.v.v_app.v.model.Post;
 import com.va.v.v_app.v.repository.MediaRepository;
 import com.va.v.v_app.v.repository.PostRepository;
+import com.va.v.v_app.v.exception.BusinessException;
+import com.va.v.v_app.v.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,7 +34,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class MediaService {
 
     private final MediaRepository mediaRepository;
@@ -128,7 +130,8 @@ public class MediaService {
                         return uploadMedia(file, userId);
                     } catch (IOException e) {
                         log.error("Failed to upload media file: {}", file.getOriginalFilename(), e);
-                        throw new RuntimeException("Failed to upload media: " + file.getOriginalFilename(), e);
+                        throw new BusinessException("UPLOAD_FAILED",
+                                "Failed to upload media: " + file.getOriginalFilename());
                     }
                 })
                 .collect(Collectors.toList());
@@ -140,12 +143,12 @@ public class MediaService {
     @Transactional
     public void attachMediaToPost(Long postId, List<Long> mediaIds) {
         Post post = postRepository.findById(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found with ID: " + postId));
+                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
 
         List<Media> mediaList = mediaRepository.findAllById(mediaIds);
 
         if (mediaList.size() != mediaIds.size()) {
-            throw new RuntimeException("Some media IDs are invalid");
+            throw new BusinessException("INVALID_MEDIA_IDS", "Some media IDs are invalid");
         }
 
         // Attach media to post
@@ -167,7 +170,7 @@ public class MediaService {
     @Transactional(readOnly = true)
     public Media getMediaById(Long mediaId) {
         return mediaRepository.findById(mediaId)
-                .orElseThrow(() -> new RuntimeException("Media not found with ID: " + mediaId));
+                .orElseThrow(() -> new ResourceNotFoundException("Media", "id", mediaId));
     }
 
     /**

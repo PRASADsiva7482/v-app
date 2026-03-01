@@ -4,14 +4,14 @@ import com.va.v.v_app.v.dto.UserSettingsDto;
 import com.va.v.v_app.v.model.UserSettings;
 import com.va.v.v_app.v.repository.UserSettingsRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class UserSettingsService {
 
     private final UserSettingsRepository settingsRepository;

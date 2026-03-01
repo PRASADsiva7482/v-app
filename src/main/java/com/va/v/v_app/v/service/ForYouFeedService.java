@@ -43,10 +43,9 @@ public class ForYouFeedService {
 
     /**
      * Generate personalized "For You" feed for a user
-     * Note: Not read-only because PostService.mapToResponse may auto-create user
-     * profiles
+     * B-5: Now read-only — feed generation only reads data.
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public List<PostResponse> generateForYouFeed(String userId, int page, int size) {
         long startTime = System.currentTimeMillis();
 
@@ -91,7 +90,7 @@ public class ForYouFeedService {
      * @param limit  Number of posts to fetch
      * @return List of posts and next cursor
      */
-    @Transactional
+    @Transactional(readOnly = true)
     public com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse> generateForYouFeedWithCursor(
             String userId, Long cursor, int limit) {
         long startTime = System.currentTimeMillis();

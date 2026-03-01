@@ -5,7 +5,7 @@ import com.va.v.v_app.v.service.UserSettingsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +18,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/settings")
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 @Tag(name = "Settings", description = "User settings, privacy, display, and account deletion APIs")
 public class SettingsController {
 

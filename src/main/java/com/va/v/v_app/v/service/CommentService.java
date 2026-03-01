@@ -8,8 +8,10 @@ import com.va.v.v_app.v.model.Post;
 import com.va.v.v_app.v.repository.CommentLikeRepository;
 import com.va.v.v_app.v.repository.CommentRepository;
 import com.va.v.v_app.v.repository.PostRepository;
+import com.va.v.v_app.v.exception.ResourceNotFoundException;
+import com.va.v.v_app.v.exception.UnauthorizedException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,7 +27,7 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class CommentService {
 
     private final CommentRepository commentRepository;
@@ -39,7 +41,7 @@ public class CommentService {
     @Transactional
     public CommentResponse addComment(Long postId, String userId, CreateCommentRequest request) {
         Post post = postRepository.findByIdAndIsDeletedFalse(postId)
-                .orElseThrow(() -> new RuntimeException("Post not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
 
         Comment comment = Comment.builder()
                 .post(post)
@@ -60,7 +62,7 @@ public class CommentService {
     @Transactional
     public CommentResponse replyToComment(Long commentId, String userId, CreateCommentRequest request) {
         Comment parentComment = commentRepository.findByIdAndIsDeletedFalse(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
 
         Comment reply = Comment.builder()
                 .post(parentComment.getPost())
@@ -104,10 +106,10 @@ public class CommentService {
     @Transactional
     public void deleteComment(Long commentId, String userId) {
         Comment comment = commentRepository.findByIdAndIsDeletedFalse(commentId)
-                .orElseThrow(() -> new RuntimeException("Comment not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
 
         if (!comment.getUserId().equals(userId)) {
-            throw new RuntimeException("You don't have permission to delete this comment");
+            throw new UnauthorizedException("comment", "delete");
         }
 
         comment.setIsDeleted(true);

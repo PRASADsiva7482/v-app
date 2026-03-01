@@ -131,24 +131,19 @@ public class ChatController {
      */
     @PostMapping(value = "/media/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadChatMedia(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file) throws IOException {
         String userId = SecurityContextUtil.getCurrentUsername();
-        try {
-            Media media = mediaService.uploadMedia(file, userId);
+        Media media = mediaService.uploadMedia(file, userId);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("fileUrl", media.getFileUrl());
-            response.put("fileName", media.getFileName());
-            response.put("fileType", file.getContentType());
-            response.put("fileSize", media.getFileSize());
-            response.put("thumbnailUrl", media.getThumbnailUrl());
-            response.put("mediaId", media.getId());
+        Map<String, Object> response = new HashMap<>();
+        response.put("fileUrl", media.getFileUrl());
+        response.put("fileName", media.getFileName());
+        response.put("fileType", file.getContentType());
+        response.put("fileSize", media.getFileSize());
+        response.put("thumbnailUrl", media.getThumbnailUrl());
+        response.put("mediaId", media.getId());
 
-            return ResponseEntity.ok(response);
-        } catch (IOException e) {
-            log.error("Error uploading chat media: {}", e.getMessage(), e);
-            throw new RuntimeException("Failed to upload chat media: " + e.getMessage());
-        }
+        return ResponseEntity.ok(response);
     }
 
     /**

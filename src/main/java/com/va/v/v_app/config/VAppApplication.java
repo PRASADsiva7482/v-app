@@ -11,13 +11,13 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 import com.ulisesbocchio.jasyptspringboot.annotation.EnableEncryptableProperties;
 
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 @EnableDiscoveryClient
 @EnableAsync
 @EnableCaching
 @Configuration
-@Log4j2
+@Slf4j
 @EnableEncryptableProperties
 @EnableFeignClients(basePackages = { "com.va.v.v_app" })
 @ComponentScan(basePackages = { "com.va.v.v_app" })

@@ -6,7 +6,7 @@ import com.va.v.v_app.v.service.MediaService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -32,7 +32,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/media")
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 @Tag(name = "Media", description = "Media management APIs")
 public class MediaController {
 
@@ -48,43 +48,27 @@ public class MediaController {
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MediaResponse> uploadMedia(
             @RequestParam("file") MultipartFile file,
-            Authentication authentication) {
-        try {
-            String userId = authentication.getName();
-            Media media = mediaService.uploadMedia(file, userId);
-            MediaResponse response = mediaService.mapToResponse(media);
-            return ResponseEntity.status(HttpStatus.CREATED).body(response);
-        } catch (IllegalArgumentException e) {
-            log.error("Validation error during media upload: {}", e.getMessage());
-            throw new RuntimeException(e.getMessage());
-        } catch (IOException e) {
-            log.error("Error uploading media file", e);
-            throw new RuntimeException("Failed to upload media file: " + e.getMessage());
-        }
+            Authentication authentication) throws IOException {
+        String userId = authentication.getName();
+        Media media = mediaService.uploadMedia(file, userId);
+        MediaResponse response = mediaService.mapToResponse(media);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @Operation(summary = "Upload multiple media files (up to 4)")
     @PostMapping(value = "/upload/multiple", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<Map<String, Object>> uploadMultipleMedia(
             @RequestParam("files") List<MultipartFile> files,
-            Authentication authentication) {
-        try {
-            String userId = authentication.getName();
-            List<Media> mediaList = mediaService.uploadMultipleMedia(files, userId);
-            List<MediaResponse> responses = mediaService.mapToResponseList(mediaList);
+            Authentication authentication) throws IOException {
+        String userId = authentication.getName();
+        List<Media> mediaList = mediaService.uploadMultipleMedia(files, userId);
+        List<MediaResponse> responses = mediaService.mapToResponseList(mediaList);
 
-            Map<String, Object> result = new HashMap<>();
-            result.put("count", responses.size());
-            result.put("media", responses);
+        Map<String, Object> result = new HashMap<>();
+        result.put("count", responses.size());
+        result.put("media", responses);
 
-            return ResponseEntity.status(HttpStatus.CREATED).body(result);
-        } catch (IllegalArgumentException e) {
-            log.error("Validation error during multiple media upload: {}", e.getMessage());
-            throw new RuntimeException(e.getMessage());
-        } catch (IOException e) {
-            log.error("Error uploading multiple media files", e);
-            throw new RuntimeException("Failed to upload media files: " + e.getMessage());
-        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 
     @Operation(summary = "Get media by ID")

@@ -6,11 +6,15 @@ import com.va.v.v_app.v.model.UserProfile;
 import com.va.v.v_app.v.repository.UserProfileRepository;
 import com.va.v.v_app.v.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import com.va.v.v_app.model.KeycloakAccessToken;
 
 import static com.va.v.v_app.config.CacheConfig.USER_PROFILES_CACHE;
 
@@ -19,7 +23,7 @@ import static com.va.v.v_app.config.CacheConfig.USER_PROFILES_CACHE;
  */
 @Service
 @RequiredArgsConstructor
-@Log4j2
+@Slf4j
 public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
@@ -98,10 +102,31 @@ public class UserProfileService {
                 .orElseGet(() -> {
                     log.info("User profile not found for userId: {}. Auto-creating...", userId);
 
+                    String displayName = userId;
+
+                    try {
+                        ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder
+                                .getRequestAttributes();
+                        if (attributes != null && attributes.getRequest() != null) {
+                            KeycloakAccessToken tokenDetails = (KeycloakAccessToken) attributes.getRequest()
+                                    .getAttribute("KEYCLOAK_TOKEN_DETAILS");
+                            if (tokenDetails != null) {
+                                if (tokenDetails.getGiven_name() != null
+                                        && !tokenDetails.getGiven_name().trim().isEmpty()) {
+                                    displayName = tokenDetails.getGiven_name().trim();
+                                } else if (tokenDetails.getName() != null && !tokenDetails.getName().trim().isEmpty()) {
+                                    displayName = tokenDetails.getName().trim();
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.debug("No request context to extract token details for auto-creating display name");
+                    }
+
                     UserProfile newProfile = UserProfile.builder()
                             .userId(userId)
                             .username(userId)
-                            .displayName("User " + userId.substring(0, Math.min(8, userId.length())))
+                            .displayName(displayName)
                             .bio("")
                             .followersCount(0)
                             .followingCount(0)

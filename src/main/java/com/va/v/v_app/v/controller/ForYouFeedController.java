@@ -1,5 +1,6 @@
 package com.va.v.v_app.v.controller;
 
+import com.va.v.v_app.v.dto.response.CursorPageResponse;
 import com.va.v.v_app.v.dto.response.PostResponse;
 import com.va.v.v_app.v.service.ForYouFeedService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,15 +12,18 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
  * REST Controller for "For You" personalized feed
- * High-performance, Redis-backed feed endpoint
  * 
- * Target: P95 latency < 100ms, Cache hit rate > 90%
+ * Fixes applied:
+ * - B-4: Removed generic Exception catch — let GlobalExceptionHandler handle it
+ * - B-8: Page size validation centralized
+ * - B-14: Removed /health test endpoint (use actuator instead)
  */
 @Slf4j
 @RestController
@@ -30,80 +34,89 @@ public class ForYouFeedController {
 
     private final ForYouFeedService forYouFeedService;
 
+    private static final int MAX_PAGE_SIZE = 100;
+    private static final int DEFAULT_PAGE_SIZE = 20;
+    private static final int MAX_CURSOR_LIMIT = 50;
+
     /**
      * Get personalized "For You" feed
-     * 
-     * Feed composition:
-     * - 40% Global trending
-     * - 35% Following users
-     * - 20% Interest-based (hashtags)
-     * - 5% Discovery
-     * 
-     * @param authentication User authentication (optional for anonymous)
-     * @param page           Page number (0-indexed)
-     * @param size           Page size (max 100)
-     * @return Personalized list of posts
      */
-    @Operation(summary = "Get personalized 'For You' feed", description = "Returns a personalized feed based on trending content, followed users, "
-            +
-            "user interests, and discovery. Cached for optimal performance.")
+    @Operation(summary = "Get personalized 'For You' feed")
     @GetMapping("/for-you")
     public ResponseEntity<Map<String, Object>> getForYouFeed(
             @Parameter(description = "Current user authentication", hidden = true) Authentication authentication,
-
             @Parameter(description = "Page number (0-indexed)") @RequestParam(defaultValue = "0") int page,
-
             @Parameter(description = "Page size (max 100)") @RequestParam(defaultValue = "20") int size,
-
             @Parameter(description = "Force refresh cache") @RequestParam(defaultValue = "false") boolean refresh) {
+
         long startTime = System.currentTimeMillis();
 
-        try {
-            // Validate page size
-            if (size > 100) {
-                size = 100;
-            }
-            if (size < 1) {
-                size = 20;
-            }
+        // B-8: Centralized page size validation
+        size = clampPageSize(size, MAX_PAGE_SIZE, DEFAULT_PAGE_SIZE);
 
-            // Get user ID from authentication
-            String userId = authentication != null ? authentication.getName() : null;
+        String userId = authentication != null ? authentication.getName() : null;
 
-            log.info("For You feed request - user: {}, page: {}, size: {}, refresh: {}",
-                    userId, page, size, refresh);
+        log.info("For You feed request - user: {}, page: {}, size: {}, refresh: {}",
+                userId, page, size, refresh);
 
-            // Generate feed
-            List<PostResponse> posts = forYouFeedService.generateForYouFeed(userId, page, size);
+        // B-4: No try-catch — exceptions propagate to GlobalExceptionHandler
+        List<PostResponse> posts = forYouFeedService.generateForYouFeed(userId, page, size);
 
-            // Calculate metadata
-            long duration = System.currentTimeMillis() - startTime;
-            boolean cacheHit = duration < 50; // Heuristic: < 50ms likely cache hit
+        long duration = System.currentTimeMillis() - startTime;
+        boolean cacheHit = duration < 50;
 
-            // Build response
-            Map<String, Object> response = new HashMap<>();
-            response.put("success", true);
-            response.put("data", buildDataResponse(posts, page, size));
-            response.put("metadata", buildMetadata(cacheHit, duration));
+        Map<String, Object> response = new HashMap<>();
+        response.put("success", true);
+        response.put("data", buildDataResponse(posts, page, size));
+        response.put("metadata", buildMetadata(cacheHit, duration));
 
-            log.info("For You feed generated in {}ms - {} posts returned", duration, posts.size());
+        log.info("For You feed generated in {}ms - {} posts returned", duration, posts.size());
 
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Error generating For You feed", e);
-
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("success", false);
-            errorResponse.put("error", "Failed to generate feed: " + e.getMessage());
-
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * Build data response with pagination
+     * Get personalized "For You" feed with cursor-based pagination (Infinite
+     * Scroll)
      */
+    @Operation(summary = "Get 'For You' feed with cursor pagination")
+    @GetMapping("/for-you/cursor")
+    public ResponseEntity<CursorPageResponse<PostResponse>> getForYouFeedWithCursor(
+            @Parameter(description = "Current user authentication", hidden = true) Authentication authentication,
+            @Parameter(description = "Cursor for next page") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "Number of posts per page (max 50)") @RequestParam(defaultValue = "20") int limit) {
+
+        // B-8: Centralized limit validation
+        limit = clampPageSize(limit, MAX_CURSOR_LIMIT, DEFAULT_PAGE_SIZE);
+
+        String userId = authentication != null ? authentication.getName() : null;
+        log.info("For You feed cursor request - user: {}, cursor: {}, limit: {}", userId, cursor, limit);
+
+        long startTime = System.currentTimeMillis();
+
+        // B-4: No try-catch — GlobalExceptionHandler handles errors
+        var response = forYouFeedService.generateForYouFeedWithCursor(userId, cursor, limit);
+
+        long duration = System.currentTimeMillis() - startTime;
+        log.info("For You feed cursor generated in {}ms - {} posts returned", duration,
+                response.getData().size());
+
+        return ResponseEntity.ok(response);
+    }
+
+    // B-14: REMOVED /for-you/health test endpoint — use /actuator/health instead
+
+    /**
+     * B-8: Centralized page size clamping
+     */
+    private int clampPageSize(int size, int max, int defaultSize) {
+        if (size > max)
+            return max;
+        if (size < 1)
+            return defaultSize;
+        return size;
+    }
+
     private Map<String, Object> buildDataResponse(List<PostResponse> posts, int page, int size) {
         Map<String, Object> data = new HashMap<>();
         data.put("posts", posts);
@@ -111,91 +124,21 @@ public class ForYouFeedController {
         return data;
     }
 
-    /**
-     * Build pagination metadata
-     */
     private Map<String, Object> buildPagination(List<PostResponse> posts, int page, int size) {
         Map<String, Object> pagination = new HashMap<>();
         pagination.put("currentPage", page);
         pagination.put("pageSize", size);
         pagination.put("itemsInPage", posts.size());
-        pagination.put("hasNext", posts.size() == size); // Heuristic
-
+        pagination.put("hasNext", posts.size() == size);
         return pagination;
     }
 
-    /**
-     * Build response metadata
-     */
     private Map<String, Object> buildMetadata(boolean cacheHit, long duration) {
         Map<String, Object> metadata = new HashMap<>();
         metadata.put("cacheHit", cacheHit);
         metadata.put("generationTime", duration + "ms");
         metadata.put("algorithm", "v1.0");
-        metadata.put("timestamp", java.time.LocalDateTime.now().toString());
-
+        metadata.put("timestamp", LocalDateTime.now().toString());
         return metadata;
-    }
-
-    /**
-     * Get personalized "For You" feed with cursor-based pagination (Infinite
-     * Scroll)
-     * 
-     * @param authentication User authentication (optional for anonymous)
-     * @param cursor         Cursor for pagination (null for first page)
-     * @param limit          Number of posts per page (max 50)
-     * @return Personalized list of posts with cursor
-     */
-    @Operation(summary = "Get 'For You' feed with cursor pagination", description = "Returns a personalized feed using cursor-based pagination for efficient infinite scroll. "
-            +
-            "Optimized for mobile and progressive loading.")
-    @GetMapping("/for-you/cursor")
-    public ResponseEntity<com.va.v.v_app.v.dto.response.CursorPageResponse<PostResponse>> getForYouFeedWithCursor(
-            @Parameter(description = "Current user authentication", hidden = true) Authentication authentication,
-
-            @Parameter(description = "Cursor for next page (use null for first page)") @RequestParam(required = false) Long cursor,
-
-            @Parameter(description = "Number of posts per page (max 50)") @RequestParam(defaultValue = "20") int limit) {
-        long startTime = System.currentTimeMillis();
-
-        try {
-            // Get user ID from authentication
-            String userId = authentication != null ? authentication.getName() : null;
-
-            log.info("For You feed cursor request - user: {}, cursor: {}, limit: {}", userId, cursor, limit);
-
-            // Generate feed with cursor
-            var response = forYouFeedService.generateForYouFeedWithCursor(userId, cursor, limit);
-
-            long duration = System.currentTimeMillis() - startTime;
-            log.info("For You feed cursor generated in {}ms - {} posts returned", duration,
-                    response.getData().size());
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Error generating For You feed with cursor", e);
-
-            var errorResponse = com.va.v.v_app.v.dto.response.CursorPageResponse.<PostResponse>of(
-                    new java.util.ArrayList<>(), null, limit);
-
-            return ResponseEntity.internalServerError().body(errorResponse);
-        }
-
-    }
-
-    /**
-     * Health check endpoint for feed system
-     */
-    @Operation(summary = "Feed system health check")
-    @GetMapping("/for-you/health")
-    public ResponseEntity<Map<String, Object>> healthCheck() {
-
-        Map<String, Object> health = new HashMap<>();
-        health.put("status", "UP");
-        health.put("service", "ForYouFeed");
-        health.put("timestamp", java.time.LocalDateTime.now().toString());
-
-        return ResponseEntity.ok(health);
     }
 }
