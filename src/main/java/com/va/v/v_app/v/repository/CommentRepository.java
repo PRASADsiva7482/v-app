@@ -66,4 +66,7 @@ public interface CommentRepository extends JpaRepository<Comment, Long> {
 
         // Account deletion
         void deleteByUserId(String userId);
+
+        // Post deletion - remove all comments for a post
+        void deleteByPost_Id(Long postId);
 }

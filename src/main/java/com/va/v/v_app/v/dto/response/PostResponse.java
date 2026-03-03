@@ -36,4 +36,5 @@ public class PostResponse {
     // User-specific fields
     private Boolean isLiked; // True if current user liked this post
     private Boolean isOwnPost; // True if current user is the author
+    private Boolean isEditable; // True if the post is within the edit/delete time window for the author
 }

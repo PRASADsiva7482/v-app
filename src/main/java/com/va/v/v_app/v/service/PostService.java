@@ -7,11 +7,17 @@ import com.va.v.v_app.v.dto.response.UserProfileResponse;
 import com.va.v.v_app.v.exception.BusinessException;
 import com.va.v.v_app.v.exception.ResourceNotFoundException;
 import com.va.v.v_app.v.exception.UnauthorizedException;
+import com.va.v.v_app.v.model.Comment;
+import com.va.v.v_app.v.model.Media;
 import com.va.v.v_app.v.model.Post;
+import com.va.v.v_app.v.repository.CommentLikeRepository;
+import com.va.v.v_app.v.repository.CommentRepository;
+import com.va.v.v_app.v.repository.MediaRepository;
 import com.va.v.v_app.v.repository.PostLikeRepository;
 import com.va.v.v_app.v.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -20,15 +26,23 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Service for managing posts.
- * 
- * Fixes applied:
- * - B-1: Uses custom exceptions instead of generic RuntimeException
- * - B-6: Cache keys include userId to prevent cross-user cache collision
- * - B-11: View count increment is now async
+ *
+ * Features:
+ * - Create, read, update, delete posts
+ * - Time-windowed edit/delete (configurable, default 15 min)
+ * - Only the post creator can edit/delete
+ * - Hard delete removes all related data (media, comments, likes, hashtags)
+ * - Update supports adding/removing media attachments
  */
 @Service
 @RequiredArgsConstructor
@@ -37,16 +51,21 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final PostLikeRepository postLikeRepository;
+    private final CommentRepository commentRepository;
+    private final CommentLikeRepository commentLikeRepository;
+    private final MediaRepository mediaRepository;
     private final UserProfileService userProfileService;
     private final MediaService mediaService;
     private final HashtagService hashtagService;
+
+    @Value("${feature.social.post.edit-window-minutes:15}")
+    private int editWindowMinutes;
 
     /**
      * Create a new post
      */
     @Transactional
     public PostResponse createPost(String userId, CreatePostRequest request) {
-        // B-1: Use BusinessException instead of RuntimeException
         if ((request.getContent() == null || request.getContent().trim().isEmpty()) &&
                 (request.getMediaIds() == null || request.getMediaIds().isEmpty())) {
             throw new BusinessException("EMPTY_POST", "Post must have either content or media");
@@ -79,11 +98,9 @@ public class PostService {
 
     /**
      * Get post by ID
-     * 
+     *
      * B-6: Cache key now includes currentUserId to prevent cross-user like status
      * collision.
-     * Example: User A sees post #123 → caches isLiked=true.
-     * User B requests post #123 → should NOT see User A's cached like status.
      */
     @Cacheable(value = "crm:post", key = "#postId + ':' + #currentUserId", unless = "#result == null")
     @Transactional(readOnly = true)
@@ -94,9 +111,8 @@ public class PostService {
     }
 
     /**
-     * Update post
-     * 
-     * B-6: Evict ALL user-specific cache entries for this post
+     * Update post — only the author can update, and only within the edit window.
+     * Supports updating content and adding/removing media attachments.
      */
     @CacheEvict(value = "crm:post", allEntries = true)
     @Transactional
@@ -104,12 +120,45 @@ public class PostService {
         Post post = postRepository.findByIdAndIsDeletedFalse(postId)
                 .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
 
-        // B-1: Use UnauthorizedException instead of RuntimeException
+        // Only the author can update
         if (!post.getUserId().equals(userId)) {
             throw new UnauthorizedException("post", "update");
         }
 
-        post.setContent(request.getContent());
+        // Check edit time window
+        validateEditWindow(post);
+
+        // Update content if provided
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+
+        // Remove media attachments if requested
+        if (request.getRemoveMediaIds() != null && !request.getRemoveMediaIds().isEmpty()) {
+            for (Long mediaId : request.getRemoveMediaIds()) {
+                try {
+                    Media media = mediaService.getMediaById(mediaId);
+                    // Only remove if this media belongs to this post
+                    if (media.getPost() != null && media.getPost().getId().equals(postId)) {
+                        mediaService.deleteMedia(mediaId);
+                        log.info("Removed media ID: {} from post ID: {}", mediaId, postId);
+                    }
+                } catch (ResourceNotFoundException e) {
+                    log.warn("Media ID: {} not found during post update, skipping", mediaId);
+                }
+            }
+        }
+
+        // Add new media attachments if requested
+        if (request.getAddMediaIds() != null && !request.getAddMediaIds().isEmpty()) {
+            mediaService.attachMediaToPost(postId, request.getAddMediaIds());
+            log.info("Added {} new media to post ID: {}", request.getAddMediaIds().size(), postId);
+        }
+
+        // Recalculate media count
+        List<Media> currentMedia = mediaService.getMediaByPostId(postId);
+        post.setMediaCount(currentMedia.size());
+
         Post updated = postRepository.save(post);
 
         // Re-associate hashtags (remove old, add new)
@@ -123,7 +172,10 @@ public class PostService {
     }
 
     /**
-     * Delete post (soft delete)
+     * Delete post — HARD DELETE.
+     * Only the author can delete, and only within the edit window.
+     * Cascades deletion to: media (files + DB), comments, comment likes, post
+     * likes, hashtags.
      */
     @CacheEvict(value = "crm:post", allEntries = true)
     @Transactional
@@ -135,16 +187,49 @@ public class PostService {
             throw new UnauthorizedException("post", "delete");
         }
 
-        post.setIsDeleted(true);
-        post.setDeletedAt(LocalDateTime.now());
-        postRepository.save(post);
+        // Check edit time window
+        validateEditWindow(post);
 
-        // Remove hashtag associations
+        // 1. Delete all media files from storage and DB
+        List<Media> mediaList = mediaRepository.findByPostId(postId);
+        for (Media media : mediaList) {
+            deleteMediaFile(media.getFilePath());
+            if (media.getThumbnailUrl() != null) {
+                // Try to delete thumbnail file as well
+                deleteMediaFile(media.getFilePath().replace(media.getFileName(), "") +
+                        "thumbnail_" + media.getFileName());
+            }
+        }
+        mediaRepository.deleteByPost_Id(postId);
+        log.info("Deleted {} media files for post ID: {}", mediaList.size(), postId);
+
+        // 2. Delete all comment likes for comments on this post
+        List<Comment> comments = commentRepository.findByPost_IdAndIsDeletedFalseAndParentCommentIsNull(
+                postId, Pageable.unpaged()).getContent();
+        // Collect all comment IDs (top-level + nested replies)
+        List<Long> allCommentIds = collectAllCommentIds(comments);
+        if (!allCommentIds.isEmpty()) {
+            commentLikeRepository.deleteByCommentIdIn(allCommentIds);
+            log.info("Deleted comment likes for {} comments on post ID: {}", allCommentIds.size(), postId);
+        }
+
+        // 3. Delete all comments for this post
+        commentRepository.deleteByPost_Id(postId);
+        log.info("Deleted comments for post ID: {}", postId);
+
+        // 4. Delete all post likes
+        postLikeRepository.deleteByPostId(postId);
+        log.info("Deleted post likes for post ID: {}", postId);
+
+        // 5. Remove hashtag associations
         hashtagService.removeHashtagsFromPost(postId);
+
+        // 6. Hard-delete the post itself
+        postRepository.delete(post);
 
         userProfileService.decrementPostsCount(userId);
 
-        log.info("Deleted post ID: {} by user: {}", postId, userId);
+        log.info("Hard-deleted post ID: {} and all related data by user: {}", postId, userId);
     }
 
     /**
@@ -176,7 +261,6 @@ public class PostService {
 
     /**
      * Increment view count — B-11: Now async for better request throughput.
-     * View count is a fire-and-forget operation; the user doesn't need to wait.
      */
     @Async
     @Transactional
@@ -184,7 +268,6 @@ public class PostService {
         try {
             postRepository.incrementViewCount(postId);
         } catch (Exception e) {
-            // Log but don't fail — view count is non-critical
             log.warn("Failed to increment view count for post {}: {}", postId, e.getMessage());
         }
     }
@@ -199,6 +282,9 @@ public class PostService {
                 postLikeRepository.existsByPostIdAndUserId(post.getId(), currentUserId);
 
         boolean isOwnPost = currentUserId != null && post.getUserId().equals(currentUserId);
+
+        // Check if post is within the editable time window
+        boolean isEditable = isOwnPost && isWithinEditWindow(post);
 
         // Fetch media for the post
         var mediaList = mediaService.getMediaByPostId(post.getId());
@@ -223,6 +309,61 @@ public class PostService {
                 .hashtags(hashtagResponses)
                 .isLiked(isLiked)
                 .isOwnPost(isOwnPost)
+                .isEditable(isEditable)
                 .build();
+    }
+
+    // ==================== Private Helper Methods ====================
+
+    /**
+     * Check if the post is within the configurable edit window.
+     */
+    private boolean isWithinEditWindow(Post post) {
+        if (post.getCreatedAt() == null)
+            return false;
+        LocalDateTime editDeadline = post.getCreatedAt().plusMinutes(editWindowMinutes);
+        return LocalDateTime.now().isBefore(editDeadline);
+    }
+
+    /**
+     * Validate that the post is within the edit window; throw exception if not.
+     */
+    private void validateEditWindow(Post post) {
+        if (!isWithinEditWindow(post)) {
+            throw new BusinessException("EDIT_WINDOW_EXPIRED",
+                    "Post can only be edited or deleted within " + editWindowMinutes + " minutes of creation");
+        }
+    }
+
+    /**
+     * Recursively collect all comment IDs (including nested replies).
+     */
+    private List<Long> collectAllCommentIds(List<Comment> comments) {
+        List<Long> ids = comments.stream()
+                .map(Comment::getId)
+                .collect(Collectors.toList());
+
+        for (Comment comment : comments) {
+            List<Comment> replies = commentRepository.findByParentComment_IdAndIsDeletedFalse(comment.getId());
+            if (!replies.isEmpty()) {
+                ids.addAll(collectAllCommentIds(replies));
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Safely delete a physical media file from storage.
+     */
+    private void deleteMediaFile(String filePath) {
+        if (filePath == null)
+            return;
+        try {
+            Path path = Paths.get(filePath);
+            Files.deleteIfExists(path);
+            log.debug("Deleted media file: {}", filePath);
+        } catch (IOException e) {
+            log.warn("Failed to delete media file: {}", filePath, e);
+        }
     }
 }

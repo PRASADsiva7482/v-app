@@ -33,4 +33,7 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
 
     // Account deletion
     void deleteByUserId(String userId);
+
+    // Post deletion - remove all likes for a post
+    void deleteByPostId(Long postId);
 }
