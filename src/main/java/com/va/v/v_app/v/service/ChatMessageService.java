@@ -51,6 +51,7 @@ public class ChatMessageService {
     private final UserProfileRepository userProfileRepository;
     private final WebSocketSessionRegistry sessionRegistry;
     private final SimpMessagingTemplate messagingTemplate;
+    private final NotificationService notificationService;
 
     /**
      * Send a message: persist + push to online recipients.
@@ -118,6 +119,23 @@ public class ChatMessageService {
         // Build response
         MessageResponse response = toMessageResponse(message, senderUsername);
         response.setTempId(request.getTempId());
+
+        // Process Mentions
+        if (request.getMentionedUserIds() != null && !request.getMentionedUserIds().isEmpty()) {
+            for (String mentionedUserId : request.getMentionedUserIds()) {
+                // Ensure only recipients are notified
+                if (recipientUserIds.contains(mentionedUserId)) {
+                    notificationService.createNotification(
+                            mentionedUserId,
+                            senderUsername,
+                            Notification.NotificationType.MENTION,
+                            "mentioned you in a chat",
+                            message.getId(),
+                            Notification.ReferenceType.USER // Technically not a POST
+                    );
+                }
+            }
+        }
 
         // Push to online recipients via WebSocket
         for (String recipientId : recipientUserIds) {

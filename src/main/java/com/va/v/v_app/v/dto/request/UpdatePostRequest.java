@@ -33,4 +33,7 @@ public class UpdatePostRequest {
      * The corresponding files will be deleted from storage.
      */
     private List<Long> removeMediaIds;
+
+    // IDs of mentioned users
+    private List<String> mentionedUserIds;
 }

@@ -22,6 +22,8 @@ public class SendMessageRequest {
     private Long replyToId; // null if not a reply
     private String tempId; // client-side temporary ID for optimistic UI
 
+    private List<String> mentionedUserIds;
+
     /**
      * List of attachment info for media messages.
      * Each entry contains fileUrl, fileName, fileType, fileSize.

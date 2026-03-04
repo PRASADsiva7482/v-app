@@ -22,4 +22,6 @@ public class CreatePostRequest {
 
     @Size(max = 4, message = "Cannot attach more than 4 media files")
     private List<Long> mediaIds;
+
+    private List<String> mentionedUserIds;
 }

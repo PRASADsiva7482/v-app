@@ -32,6 +32,7 @@ public class PostResponse {
     private UserProfileResponse author;
     private List<MediaResponse> media;
     private List<HashtagResponse> hashtags;
+    private List<String> mentionedUserIds;
 
     // User-specific fields
     private Boolean isLiked; // True if current user liked this post

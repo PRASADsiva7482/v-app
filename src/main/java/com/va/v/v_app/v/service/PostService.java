@@ -14,6 +14,7 @@ import com.va.v.v_app.v.repository.CommentLikeRepository;
 import com.va.v.v_app.v.repository.CommentRepository;
 import com.va.v.v_app.v.repository.MediaRepository;
 import com.va.v.v_app.v.repository.PostLikeRepository;
+import com.va.v.v_app.v.repository.PostMentionRepository;
 import com.va.v.v_app.v.repository.PostRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,6 +58,8 @@ public class PostService {
     private final UserProfileService userProfileService;
     private final MediaService mediaService;
     private final HashtagService hashtagService;
+    private final NotificationService notificationService;
+    private final PostMentionRepository postMentionRepository;
 
     @Value("${feature.social.post.edit-window-minutes:15}")
     private int editWindowMinutes;
@@ -89,10 +92,30 @@ public class PostService {
             hashtagService.associateHashtagsWithPost(savedPost, request.getContent());
         }
 
+        // Process Mentions
+        if (request.getMentionedUserIds() != null && !request.getMentionedUserIds().isEmpty()) {
+            for (String mentionedUserId : request.getMentionedUserIds()) {
+                // Ensure duplicate mentions are not stored
+                if (!postMentionRepository.findByPostId(savedPost.getId()).stream()
+                        .anyMatch(pn -> pn.getMentionedUserId().equals(mentionedUserId))) {
+                    com.va.v.v_app.v.model.PostMention postMention = com.va.v.v_app.v.model.PostMention.builder()
+                            .post(savedPost)
+                            .mentionedUserId(mentionedUserId)
+                            .build();
+
+                    postMentionRepository.save(postMention);
+
+                    // Send notification to mentioned user
+                    notificationService.notifyMention(mentionedUserId, userId, savedPost.getId());
+                }
+            }
+        }
+
         userProfileService.incrementPostsCount(userId);
 
-        log.info("Created new post with ID: {} by user: {} with {} media files",
-                savedPost.getId(), userId, savedPost.getMediaCount());
+        log.info("Created new post with ID: {} by user: {} with {} media files and {} mentions",
+                savedPost.getId(), userId, savedPost.getMediaCount(),
+                request.getMentionedUserIds() != null ? request.getMentionedUserIds().size() : 0);
         return mapToResponse(savedPost, userId);
     }
 
@@ -165,6 +188,23 @@ public class PostService {
         hashtagService.removeHashtagsFromPost(postId);
         if (request.getContent() != null && !request.getContent().trim().isEmpty()) {
             hashtagService.associateHashtagsWithPost(updated, request.getContent());
+        }
+
+        // Re-associate mentions
+        postMentionRepository.deleteByPostId(postId);
+        if (request.getMentionedUserIds() != null && !request.getMentionedUserIds().isEmpty()) {
+            for (String mentionedUserId : request.getMentionedUserIds()) {
+                if (!postMentionRepository.findByPostId(postId).stream()
+                        .anyMatch(pn -> pn.getMentionedUserId().equals(mentionedUserId))) {
+                    com.va.v.v_app.v.model.PostMention postMention = com.va.v.v_app.v.model.PostMention.builder()
+                            .post(updated)
+                            .mentionedUserId(mentionedUserId)
+                            .build();
+                    postMentionRepository.save(postMention);
+                    // Send notification to mentioned user for new mentions
+                    notificationService.notifyMention(mentionedUserId, userId, postId);
+                }
+            }
         }
 
         log.info("Updated post ID: {} by user: {}", postId, userId);
@@ -293,6 +333,11 @@ public class PostService {
         // Fetch hashtags for the post
         var hashtagResponses = hashtagService.getHashtagsForPost(post.getId());
 
+        // Fetch mentions for the post
+        var mentionedUserIds = postMentionRepository.findByPostId(post.getId()).stream()
+                .map(m -> m.getMentionedUserId())
+                .collect(Collectors.toList());
+
         return PostResponse.builder()
                 .id(post.getId())
                 .userId(post.getUserId())
@@ -307,6 +352,7 @@ public class PostService {
                 .author(author)
                 .media(mediaResponses)
                 .hashtags(hashtagResponses)
+                .mentionedUserIds(mentionedUserIds)
                 .isLiked(isLiked)
                 .isOwnPost(isOwnPost)
                 .isEditable(isEditable)
