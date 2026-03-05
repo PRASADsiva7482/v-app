@@ -107,7 +107,7 @@ public class NotificationService {
     public Page<NotificationResponse> getMentions(String userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Notification> notifications = notificationRepository
-                .findMentionsByRecipientId(userId, pageable);
+                .findByRecipientIdAndTypeOrderByCreatedAtDesc(userId, NotificationType.MENTION, pageable);
 
         return enrichNotificationsPage(notifications);
     }
