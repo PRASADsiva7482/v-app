@@ -8,9 +8,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
 
 /**
  * REST Controller for user profile operations
@@ -59,6 +64,26 @@ public class UserProfileController {
             @Valid @RequestBody UpdateProfileRequest request) {
         String userId = authentication.getName();
         UserProfileResponse updated = userProfileService.updateProfile(userId, request);
+        return ResponseEntity.ok(updated);
+    }
+
+    @Operation(summary = "Upload and update profile picture (replaces old one)")
+    @PostMapping(value = "/me/picture/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<UserProfileResponse> uploadProfilePicture(
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) throws IOException {
+        String userId = authentication.getName();
+        log.info("Uploading profile picture for user: {}", userId);
+        UserProfileResponse updated = userProfileService.uploadAndUpdateProfilePicture(userId, file);
+        return ResponseEntity.status(HttpStatus.OK).body(updated);
+    }
+
+    @Operation(summary = "Delete profile picture")
+    @DeleteMapping("/me/picture")
+    public ResponseEntity<UserProfileResponse> deleteProfilePicture(Authentication authentication) {
+        String userId = authentication.getName();
+        log.info("Deleting profile picture for user: {}", userId);
+        UserProfileResponse updated = userProfileService.deleteProfilePicture(userId);
         return ResponseEntity.ok(updated);
     }
 

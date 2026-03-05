@@ -7,14 +7,27 @@ import com.va.v.v_app.v.repository.UserProfileRepository;
 import com.va.v.v_app.v.repository.FollowRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.va.v.v_app.model.KeycloakAccessToken;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.UUID;
 
 import static com.va.v.v_app.config.CacheConfig.USER_PROFILES_CACHE;
 
@@ -28,6 +41,136 @@ public class UserProfileService {
 
     private final UserProfileRepository userProfileRepository;
     private final FollowRepository followRepository;
+
+    @Value("${feature.media.storage.profile-picture-path}")
+    private String profilePicturePath;
+
+    @Value("${feature.media.upload.allowed-image-types}")
+    private String allowedImageTypes;
+
+    @Value("${feature.media.upload.max-image-size}")
+    private long maxImageSize;
+
+    @Value("${server.servlet.context-path:}")
+    private String contextPath;
+
+    // ==================== Profile Picture Upload ====================
+
+    /**
+     * Upload a new profile picture, delete the old one from storage, and update the
+     * user profile.
+     * Enforces: one user = one profile picture in storage.
+     */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
+    @Transactional
+    public UserProfileResponse uploadAndUpdateProfilePicture(String userId, MultipartFile file) throws IOException {
+        // Validate the file
+        validateProfilePictureFile(file);
+
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User profile not found"));
+
+        // Delete old profile picture from storage if exists
+        deleteOldProfilePictureFile(profile);
+
+        // Generate unique filename and save the new file
+        String extension = getFileExtension(file.getOriginalFilename()).toLowerCase();
+        String uniqueFilename = generateProfilePicFilename(userId, extension);
+        Path targetPath = Paths.get(profilePicturePath, uniqueFilename);
+
+        // Ensure directory exists
+        Files.createDirectories(targetPath.getParent());
+
+        // Save the new file
+        Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+        // Build URL for serving
+        String basePath = contextPath.isEmpty() ? "" : contextPath;
+        String fileUrl = String.format("%s/api/v1/media/profile-pictures/%s", basePath, uniqueFilename);
+
+        // Update profile
+        profile.setProfilePictureUrl(fileUrl);
+        UserProfile updated = userProfileRepository.save(profile);
+
+        log.info("✅ Profile picture updated for user: {} -> {}", userId, fileUrl);
+        return mapToResponse(updated, userId);
+    }
+
+    /**
+     * Delete the current profile picture from storage and clear URL from profile.
+     */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
+    @Transactional
+    public UserProfileResponse deleteProfilePicture(String userId) {
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User profile not found"));
+
+        deleteOldProfilePictureFile(profile);
+
+        profile.setProfilePictureUrl(null);
+        UserProfile updated = userProfileRepository.save(profile);
+
+        log.info("✅ Profile picture deleted for user: {}", userId);
+        return mapToResponse(updated, userId);
+    }
+
+    /**
+     * Delete old profile picture file from disk if it exists
+     */
+    private void deleteOldProfilePictureFile(UserProfile profile) {
+        String oldPictureUrl = profile.getProfilePictureUrl();
+        if (oldPictureUrl != null && !oldPictureUrl.isEmpty() && oldPictureUrl.contains("/profile-pictures/")) {
+            try {
+                // Extract filename from URL: .../profile-pictures/filename.ext
+                String oldFilename = oldPictureUrl.substring(oldPictureUrl.lastIndexOf("/") + 1);
+                Path oldFilePath = Paths.get(profilePicturePath, oldFilename);
+                if (Files.exists(oldFilePath)) {
+                    Files.delete(oldFilePath);
+                    log.info("🗑️ Deleted old profile picture: {}", oldFilePath);
+                }
+            } catch (IOException e) {
+                log.warn("⚠️ Failed to delete old profile picture: {}", oldPictureUrl, e);
+            }
+        }
+    }
+
+    private void validateProfilePictureFile(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("Profile picture file is empty");
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null) {
+            throw new IllegalArgumentException("Filename is invalid");
+        }
+
+        String extension = getFileExtension(originalFilename).toLowerCase();
+        List<String> allowedImages = Arrays.asList(allowedImageTypes.split(","));
+        if (!allowedImages.contains(extension)) {
+            throw new IllegalArgumentException(
+                    "File type not allowed: " + extension + ". Allowed: " + allowedImageTypes);
+        }
+
+        if (file.getSize() > maxImageSize) {
+            throw new IllegalArgumentException("Profile picture size exceeds maximum allowed size of " +
+                    (maxImageSize / 1024 / 1024) + "MB");
+        }
+    }
+
+    private String generateProfilePicFilename(String userId, String extension) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
+        String uuid = UUID.randomUUID().toString().substring(0, 8);
+        return String.format("pfp_%s_%s_%s.%s", userId, timestamp, uuid, extension);
+    }
+
+    private String getFileExtension(String filename) {
+        int lastDotIndex = filename.lastIndexOf('.');
+        if (lastDotIndex == -1)
+            return "";
+        return filename.substring(lastDotIndex + 1);
+    }
+
+    // ==================== Original Profile Methods ====================
 
     /**
      * Get user profile by user ID (CACHED for 1 hour)

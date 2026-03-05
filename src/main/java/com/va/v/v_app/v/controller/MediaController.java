@@ -44,6 +44,9 @@ public class MediaController {
     @Value("${feature.media.storage.video-path}")
     private String videoPath;
 
+    @Value("${feature.media.storage.profile-picture-path}")
+    private String profilePicturePath;
+
     @Operation(summary = "Upload a single media file")
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<MediaResponse> uploadMedia(
@@ -107,6 +110,12 @@ public class MediaController {
     @GetMapping("/videos/{filename:.+}")
     public ResponseEntity<Resource> serveVideo(@PathVariable String filename) {
         return serveFile(videoPath, filename);
+    }
+
+    @Operation(summary = "Serve profile picture file")
+    @GetMapping("/profile-pictures/{filename:.+}")
+    public ResponseEntity<Resource> serveProfilePicture(@PathVariable String filename) {
+        return serveFile(profilePicturePath, filename);
     }
 
     // ==================== Private Helper Methods ====================
