@@ -22,6 +22,7 @@ public class FollowService {
 
     private final FollowRepository followRepository;
     private final UserProfileService userProfileService;
+    private final NotificationService notificationService;
 
     /**
      * Follow a user
@@ -44,6 +45,8 @@ public class FollowService {
         followRepository.save(follow);
         userProfileService.incrementFollowingCount(followerId);
         userProfileService.incrementFollowersCount(followingId);
+
+        notificationService.notifyFollow(followingId, followerId);
 
         log.info("User {} followed user {}", followerId, followingId);
     }

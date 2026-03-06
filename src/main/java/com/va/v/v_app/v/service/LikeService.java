@@ -4,8 +4,12 @@ import com.va.v.v_app.v.dto.response.LikeResponse;
 import com.va.v.v_app.v.dto.response.UserProfileResponse;
 import com.va.v.v_app.v.model.CommentLike;
 import com.va.v.v_app.v.model.PostLike;
+import com.va.v.v_app.v.model.Post;
+import com.va.v.v_app.v.model.Comment;
+import com.va.v.v_app.v.model.Notification;
 import com.va.v.v_app.v.repository.*;
 import com.va.v.v_app.v.exception.BusinessException;
+import com.va.v.v_app.v.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +30,7 @@ public class LikeService {
     private final PostRepository postRepository;
     private final CommentRepository commentRepository;
     private final UserProfileService userProfileService;
+    private final NotificationService notificationService;
 
     /**
      * Like a post
@@ -43,6 +48,10 @@ public class LikeService {
 
         postLikeRepository.save(like);
         postRepository.incrementLikeCount(postId);
+
+        Post post = postRepository.findById(postId)
+                .orElseThrow(() -> new ResourceNotFoundException("Post", "id", postId));
+        notificationService.notifyLike(post.getUserId(), userId, postId);
 
         log.info("User {} liked post {}", userId, postId);
     }
@@ -87,6 +96,11 @@ public class LikeService {
 
         commentLikeRepository.save(like);
         commentRepository.incrementLikeCount(commentId);
+
+        Comment comment = commentRepository.findById(commentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Comment", "id", commentId));
+        notificationService.createNotification(comment.getUserId(), userId,
+                Notification.NotificationType.LIKE, null, comment.getPost().getId(), Notification.ReferenceType.POST);
 
         log.info("User {} liked comment {}", userId, commentId);
     }
