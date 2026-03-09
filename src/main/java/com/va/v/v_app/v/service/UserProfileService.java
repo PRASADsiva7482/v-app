@@ -301,6 +301,9 @@ public class UserProfileService {
         if (request.getBio() != null) {
             profile.setBio(request.getBio());
         }
+        if (request.getNickname() != null) {
+            profile.setNickname(request.getNickname());
+        }
         if (request.getAbout() != null) {
             profile.setAbout(request.getAbout());
         }
@@ -455,6 +458,7 @@ public class UserProfileService {
                 .userId(profile.getUserId())
                 .username(profile.getUsername())
                 .displayName(profile.getDisplayName())
+                .nickname(profile.getNickname())
                 .bio(profile.getBio())
                 .about(profile.getAbout())
                 .profilePictureUrl(profile.getProfilePictureUrl())

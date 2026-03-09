@@ -38,6 +38,9 @@ public class UserProfile {
     @Column(name = "display_name", length = 200)
     private String displayName;
 
+    @Column(name = "nickname", length = 100)
+    private String nickname;
+
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 

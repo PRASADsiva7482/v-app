@@ -20,6 +20,7 @@ public class UserProfileResponse {
     private String userId;
     private String username;
     private String displayName;
+    private String nickname;
     private String bio;
     private String profilePictureUrl;
     private String coverPhotoUrl;
