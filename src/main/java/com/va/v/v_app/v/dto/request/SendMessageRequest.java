@@ -25,10 +25,24 @@ public class SendMessageRequest {
     private List<String> mentionedUserIds;
 
     /**
+     * Poll data for POLL type messages.
+     */
+    private ChatPollData poll;
+
+    /**
      * List of attachment info for media messages.
      * Each entry contains fileUrl, fileName, fileType, fileSize.
      */
     private List<AttachmentInfo> attachments;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class ChatPollData {
+        private String question;
+        private List<String> options;
+    }
 
     @Data
     @Builder

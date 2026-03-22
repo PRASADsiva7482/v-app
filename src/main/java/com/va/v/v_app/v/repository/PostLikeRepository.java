@@ -36,4 +36,8 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
 
     // Post deletion - remove all likes for a post
     void deleteByPostId(Long postId);
+
+    // Analytics: count total likes received on all posts by a user
+    @Query("SELECT COUNT(pl) FROM PostLike pl WHERE pl.postId IN (SELECT p.id FROM Post p WHERE p.userId = :userId AND p.isDeleted = false)")
+    long countLikesByPostOwner(@Param("userId") String userId);
 }

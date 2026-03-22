@@ -71,6 +71,6 @@ public class Message {
     private List<MessageAttachment> attachments = new ArrayList<>();
 
     public enum MessageType {
-        TEXT, IMAGE, VIDEO, AUDIO, FILE, SYSTEM
+        TEXT, IMAGE, VIDEO, AUDIO, FILE, SYSTEM, POLL
     }
 }
