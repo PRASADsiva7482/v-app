@@ -5,8 +5,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 /**
- * Request to start a new 1:1 conversation
+ * Request to start a new conversation (1:1 or group)
  */
 @Data
 @Builder
@@ -14,6 +16,18 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class StartConversationRequest {
 
-    /** Keycloak user_id of the other participant */
+    /** Keycloak user_id of the other participant (for DIRECT) */
     private String recipientUserId;
+
+    /** For GROUP conversations — list of user IDs to add */
+    private List<String> participantIds;
+
+    /** Group name (required for GROUP type) */
+    private String groupName;
+
+    /** Group avatar URL */
+    private String groupAvatarUrl;
+
+    /** Conversation type: DIRECT or GROUP */
+    private String type;
 }

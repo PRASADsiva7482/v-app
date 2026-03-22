@@ -81,7 +81,36 @@ public class ChatController {
     public ResponseEntity<ConversationResponse> startConversation(
             @RequestBody StartConversationRequest request) {
         String userId = SecurityContextUtil.getCurrentUsername();
+        // Support both DIRECT and GROUP via the type field
+        if ("GROUP".equalsIgnoreCase(request.getType()) && request.getParticipantIds() != null) {
+            return ResponseEntity.ok(conversationService.createGroupConversation(userId, request));
+        }
         return ResponseEntity.ok(conversationService.startDirectConversation(userId, request));
+    }
+
+    @PostMapping("/conversations/group")
+    public ResponseEntity<ConversationResponse> createGroupChat(
+            @RequestBody StartConversationRequest request) {
+        String userId = SecurityContextUtil.getCurrentUsername();
+        return ResponseEntity.ok(conversationService.createGroupConversation(userId, request));
+    }
+
+    @PostMapping("/conversations/{conversationId}/members")
+    public ResponseEntity<ConversationResponse> addGroupMember(
+            @PathVariable Long conversationId,
+            @RequestBody Map<String, String> body) {
+        String userId = SecurityContextUtil.getCurrentUsername();
+        String newMemberId = body.get("userId");
+        return ResponseEntity.ok(conversationService.addGroupMember(conversationId, userId, newMemberId));
+    }
+
+    @DeleteMapping("/conversations/{conversationId}/members/{memberId}")
+    public ResponseEntity<Void> removeGroupMember(
+            @PathVariable Long conversationId,
+            @PathVariable String memberId) {
+        String userId = SecurityContextUtil.getCurrentUsername();
+        conversationService.removeGroupMember(conversationId, userId, memberId);
+        return ResponseEntity.noContent().build();
     }
 
     // ─── Messages ───

@@ -149,4 +149,15 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 	List<Post> findAllByUserId(String userId);
 
 	void deleteByUserId(String userId);
+
+	// Location-based feed: Haversine formula for nearby posts
+	@Query(value = "SELECT p.id FROM post p WHERE p.is_deleted = 0 AND p.latitude IS NOT NULL " +
+			"AND (6371 * acos(cos(radians(:lat)) * cos(radians(p.latitude)) * " +
+			"cos(radians(p.longitude) - radians(:lng)) + sin(radians(:lat)) * " +
+			"sin(radians(p.latitude)))) < :radiusKm " +
+			"ORDER BY p.created_at DESC LIMIT :lim", nativeQuery = true)
+	List<Long> findNearbyPostIds(@Param("lat") double lat, @Param("lng") double lng,
+			@Param("radiusKm") double radiusKm, @Param("lim") int lim);
+
+	List<Post> findByIdInAndIsDeletedFalse(List<Long> ids);
 }

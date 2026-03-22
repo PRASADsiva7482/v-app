@@ -68,6 +68,15 @@ public class Post {
     @Column(name = "co_author_id")
     private String coAuthorId;
 
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "location_name", length = 200)
+    private String locationName;
+
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
