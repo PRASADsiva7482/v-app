@@ -58,6 +58,16 @@ public class Post {
     @Builder.Default
     private Integer viewsCount = 0;
 
+    @Column(name = "is_draft", nullable = false)
+    @Builder.Default
+    private Boolean isDraft = false;
+
+    @Column(name = "scheduled_for")
+    private LocalDateTime scheduledFor;
+
+    @Column(name = "co_author_id")
+    private String coAuthorId;
+
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;

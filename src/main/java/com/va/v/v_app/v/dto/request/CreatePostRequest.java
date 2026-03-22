@@ -7,6 +7,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 /**
@@ -29,4 +30,7 @@ public class CreatePostRequest {
     // Optional poll data
     @Valid
     private CreatePollRequest poll;
+
+    private Boolean isDraft;
+    private LocalDateTime scheduledFor;
 }

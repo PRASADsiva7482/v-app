@@ -89,6 +89,13 @@ public class UserProfile {
     @Builder.Default
     private Boolean isPrivate = false;
 
+    @Column(name = "pinned_post_id")
+    private Long pinnedPostId;
+
+    @Column(name = "is_ghost_mode", nullable = false)
+    @Builder.Default
+    private Boolean isGhostMode = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

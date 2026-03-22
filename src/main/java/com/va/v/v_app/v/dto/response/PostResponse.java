@@ -42,4 +42,7 @@ public class PostResponse {
 
     // Poll data (if the post has a poll)
     private PollResponse poll;
+
+    private Boolean isDraft;
+    private LocalDateTime scheduledFor;
 }

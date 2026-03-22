@@ -81,6 +81,8 @@ public class PostService {
         Post post = Post.builder()
                 .userId(userId)
                 .content(request.getContent() != null ? request.getContent() : "")
+                .isDraft(request.getIsDraft() != null ? request.getIsDraft() : false)
+                .scheduledFor(request.getScheduledFor())
                 .build();
 
         Post savedPost = postRepository.save(post);
@@ -375,6 +377,8 @@ public class PostService {
                 .isEditable(isEditable)
                 .isBookmarked(isBookmarked)
                 .poll(pollResponse)
+                .isDraft(post.getIsDraft())
+                .scheduledFor(post.getScheduledFor())
                 .build();
     }
 
