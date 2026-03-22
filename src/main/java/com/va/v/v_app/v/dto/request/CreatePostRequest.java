@@ -1,5 +1,6 @@
 package com.va.v.v_app.v.dto.request;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,4 +25,8 @@ public class CreatePostRequest {
     private List<Long> mediaIds;
 
     private List<String> mentionedUserIds;
+
+    // Optional poll data
+    @Valid
+    private CreatePollRequest poll;
 }

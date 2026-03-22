@@ -2,6 +2,7 @@ package com.va.v.v_app.v.service;
 
 import com.va.v.v_app.v.dto.request.CreatePostRequest;
 import com.va.v.v_app.v.dto.request.UpdatePostRequest;
+import com.va.v.v_app.v.dto.response.PollResponse;
 import com.va.v.v_app.v.dto.response.PostResponse;
 import com.va.v.v_app.v.dto.response.UserProfileResponse;
 import com.va.v.v_app.v.exception.BusinessException;
@@ -60,6 +61,8 @@ public class PostService {
     private final HashtagService hashtagService;
     private final NotificationService notificationService;
     private final PostMentionRepository postMentionRepository;
+    private final com.va.v.v_app.v.repository.BookmarkRepository bookmarkRepository;
+    private final PollService pollService;
 
     @Value("${feature.social.post.edit-window-minutes:15}")
     private int editWindowMinutes;
@@ -70,8 +73,9 @@ public class PostService {
     @Transactional
     public PostResponse createPost(String userId, CreatePostRequest request) {
         if ((request.getContent() == null || request.getContent().trim().isEmpty()) &&
-                (request.getMediaIds() == null || request.getMediaIds().isEmpty())) {
-            throw new BusinessException("EMPTY_POST", "Post must have either content or media");
+                (request.getMediaIds() == null || request.getMediaIds().isEmpty()) &&
+                request.getPoll() == null) {
+            throw new BusinessException("EMPTY_POST", "Post must have either content, media, or a poll");
         }
 
         Post post = Post.builder()
@@ -109,6 +113,12 @@ public class PostService {
                     notificationService.notifyMention(mentionedUserId, userId, savedPost.getId());
                 }
             }
+        }
+
+        // Create poll if provided
+        if (request.getPoll() != null) {
+            pollService.createPoll(savedPost, request.getPoll());
+            log.info("Created poll for post ID: {}", savedPost.getId());
         }
 
         userProfileService.incrementPostsCount(userId);
@@ -338,6 +348,13 @@ public class PostService {
                 .map(m -> m.getMentionedUserId())
                 .collect(Collectors.toList());
 
+        // Check if bookmarked
+        boolean isBookmarked = currentUserId != null &&
+                bookmarkRepository.existsByPostIdAndUserId(post.getId(), currentUserId);
+
+        // Fetch poll data if present
+        PollResponse pollResponse = pollService.getPollForPost(post.getId(), currentUserId);
+
         return PostResponse.builder()
                 .id(post.getId())
                 .userId(post.getUserId())
@@ -356,6 +373,8 @@ public class PostService {
                 .isLiked(isLiked)
                 .isOwnPost(isOwnPost)
                 .isEditable(isEditable)
+                .isBookmarked(isBookmarked)
+                .poll(pollResponse)
                 .build();
     }
 

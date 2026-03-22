@@ -33,6 +33,7 @@ public class UserProfileResponse {
     private LocalDateTime dateOfBirth;
     private String phoneNumber;
     private Boolean isVerified;
+    private String verificationTier; // NONE, BLUE, GOLD, GREY
     private Boolean isPrivate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

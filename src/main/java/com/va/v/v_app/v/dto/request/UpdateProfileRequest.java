@@ -49,4 +49,7 @@ public class UpdateProfileRequest {
     private String phoneNumber;
 
     private Boolean isPrivate; // Privacy setting
+
+    @Size(max = 20, message = "Verification tier cannot exceed 20 characters")
+    private String verificationTier;
 }

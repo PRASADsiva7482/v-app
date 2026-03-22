@@ -328,6 +328,9 @@ public class UserProfileService {
         if (request.getIsPrivate() != null) {
             profile.setIsPrivate(request.getIsPrivate());
         }
+        if (request.getVerificationTier() != null) {
+            profile.setVerificationTier(request.getVerificationTier());
+        }
 
         UserProfile updated = userProfileRepository.save(profile);
         log.info("Updated profile for user: {}", userId);
@@ -468,6 +471,7 @@ public class UserProfileService {
                 .dateOfBirth(profile.getDateOfBirth())
                 .phoneNumber(profile.getPhoneNumber())
                 .isVerified(profile.getIsVerified())
+                .verificationTier(profile.getVerificationTier() != null ? profile.getVerificationTier() : "NONE")
                 .isPrivate(profile.getIsPrivate())
                 .followersCount(profile.getFollowersCount())
                 .followingCount(profile.getFollowingCount())

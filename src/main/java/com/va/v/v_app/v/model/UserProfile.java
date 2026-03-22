@@ -81,6 +81,10 @@ public class UserProfile {
     @Builder.Default
     private Boolean isVerified = false;
 
+    @Column(name = "verification_tier", length = 20)
+    @Builder.Default
+    private String verificationTier = "NONE"; // NONE, BLUE, GOLD, GREY
+
     @Column(name = "is_private", nullable = false)
     @Builder.Default
     private Boolean isPrivate = false;
