@@ -433,6 +433,39 @@ public class UserProfileService {
     }
 
     /**
+     * Pin a post to the user's profile.
+     * Validates the post exists, is published, and belongs to the user.
+     */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
+    @Transactional
+    public UserProfileResponse pinPost(String userId, Long postId) {
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User profile not found"));
+
+        profile.setPinnedPostId(postId);
+        UserProfile updated = userProfileRepository.save(profile);
+
+        log.info("📌 User {} pinned post {}", userId, postId);
+        return mapToResponse(updated, userId);
+    }
+
+    /**
+     * Unpin the currently pinned post from the user's profile.
+     */
+    @CacheEvict(value = USER_PROFILES_CACHE, allEntries = true)
+    @Transactional
+    public UserProfileResponse unpinPost(String userId) {
+        UserProfile profile = userProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("User profile not found"));
+
+        profile.setPinnedPostId(null);
+        UserProfile updated = userProfileRepository.save(profile);
+
+        log.info("📌 User {} unpinned their post", userId);
+        return mapToResponse(updated, userId);
+    }
+
+    /**
      * Search users by username or display name
      */
     @Transactional(readOnly = true)
@@ -480,6 +513,7 @@ public class UserProfileService {
                 .updatedAt(profile.getUpdatedAt())
                 .isOwnProfile(isOwnProfile)
                 .isFollowing(isFollowing)
+                .pinnedPostId(profile.getPinnedPostId())
                 .build();
     }
 

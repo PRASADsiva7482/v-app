@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -160,4 +161,31 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 			@Param("radiusKm") double radiusKm, @Param("lim") int lim);
 
 	List<Post> findByIdInAndIsDeletedFalse(List<Long> ids);
+
+	// ========== POST SCHEDULER QUERIES ==========
+
+	/**
+	 * Find scheduled posts whose publish time has passed and are still drafts.
+	 * Used by PostSchedulerJob to auto-publish scheduled posts.
+	 */
+	@Query("SELECT p FROM Post p WHERE p.isDraft = true AND p.scheduledFor IS NOT NULL " +
+			"AND p.scheduledFor <= :now AND p.isDeleted = false")
+	List<Post> findScheduledPostsDue(@Param("now") LocalDateTime now);
+
+	/**
+	 * Find stale drafts (older than cutoff) that have no scheduled time.
+	 * Used for cleanup of abandoned drafts.
+	 */
+	@Query("SELECT p FROM Post p WHERE p.isDraft = true AND p.scheduledFor IS NULL " +
+			"AND p.createdAt < :cutoff AND p.isDeleted = false")
+	List<Post> findStaleDrafts(@Param("cutoff") LocalDateTime cutoff);
+
+	// ========== PINNED POST QUERY ==========
+
+	/**
+	 * Find a specific post by ID only if it is not deleted and not a draft.
+	 * Used for pinned post resolution on user profiles.
+	 */
+	@Query("SELECT p FROM Post p WHERE p.id = :postId AND p.isDeleted = false AND p.isDraft = false")
+	java.util.Optional<Post> findPublishedPostById(@Param("postId") Long postId);
 }

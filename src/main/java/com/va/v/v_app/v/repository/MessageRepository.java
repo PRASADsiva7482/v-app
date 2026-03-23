@@ -40,4 +40,15 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
         // Account deletion
         void deleteBySenderId(String senderId);
+
+        // ========== VANISH MODE (Self-destructing messages) ==========
+
+        /**
+         * Soft-delete all messages whose expiry time has passed.
+         * Used by MessageExpiryJob to clean up vanish-mode messages.
+         */
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("UPDATE Message m SET m.isDeleted = true " +
+                        "WHERE m.expiresAt IS NOT NULL AND m.expiresAt <= :now AND m.isDeleted = false")
+        int softDeleteExpiredMessages(@Param("now") java.time.LocalDateTime now);
 }

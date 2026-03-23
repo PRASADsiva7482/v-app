@@ -118,4 +118,24 @@ public class UserProfileController {
                 pageable);
         return ResponseEntity.ok(users);
     }
+
+    // ─── Pinned Post ───
+
+    @Operation(summary = "Pin a post to your profile")
+    @PutMapping("/me/pin/{postId}")
+    public ResponseEntity<UserProfileResponse> pinPost(
+            @PathVariable Long postId,
+            Authentication authentication) {
+        String userId = authentication.getName();
+        UserProfileResponse updated = userProfileService.pinPost(userId, postId);
+        return ResponseEntity.ok(updated);
+    }
+
+    @Operation(summary = "Unpin the currently pinned post")
+    @DeleteMapping("/me/pin")
+    public ResponseEntity<UserProfileResponse> unpinPost(Authentication authentication) {
+        String userId = authentication.getName();
+        UserProfileResponse updated = userProfileService.unpinPost(userId);
+        return ResponseEntity.ok(updated);
+    }
 }

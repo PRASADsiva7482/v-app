@@ -41,4 +41,5 @@ public class UserProfileResponse {
     // Additional fields for current user context
     private Boolean isFollowing; // Set to true if current user follows this profile
     private Boolean isOwnProfile; // Set to true if this is the current user's profile
+    private Long pinnedPostId; // ID of the post pinned to the top of this profile
 }

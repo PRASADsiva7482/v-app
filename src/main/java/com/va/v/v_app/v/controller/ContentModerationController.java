@@ -2,6 +2,7 @@ package com.va.v.v_app.v.controller;
 
 import com.va.v.v_app.config.security.SecurityContextUtil;
 import com.va.v.v_app.v.model.ContentFlag;
+import com.va.v.v_app.v.service.AdvancedModerationService;
 import com.va.v.v_app.v.service.ContentModerationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +17,7 @@ import java.util.Map;
 public class ContentModerationController {
 
     private final ContentModerationService contentModerationService;
+    private final AdvancedModerationService advancedModerationService;
 
     @PostMapping("/report")
     public ResponseEntity<ContentFlag> reportContent(@RequestBody Map<String, String> request) {
@@ -39,10 +41,32 @@ public class ContentModerationController {
                     "flagged", true,
                     "confidence", flag.getAiConfidence(),
                     "categories", flag.getAiCategories(),
-                    "flagId", flag.getId()
-            ));
+                    "flagId", flag.getId()));
         }
         return ResponseEntity.ok(Map.of("flagged", false));
+    }
+
+    /**
+     * Advanced AI-powered content scan with severity scoring and recommendations.
+     * Returns detailed analysis including: severity, action, categories, PII, spam
+     * score.
+     */
+    @PostMapping("/scan/advanced")
+    public ResponseEntity<Map<String, Object>> advancedScan(@RequestBody Map<String, String> request) {
+        String content = request.getOrDefault("content", "");
+
+        AdvancedModerationService.ModerationResult result = advancedModerationService.analyzeContent(content);
+
+        Map<String, Object> response = new java.util.LinkedHashMap<>();
+        response.put("flagged", result.isFlagged());
+        response.put("severity", result.getSeverity());
+        response.put("action", result.getAction());
+        response.put("categories", result.getCategories());
+        response.put("categoryConfidences", result.getCategoryConfidences());
+        response.put("overallConfidence", result.getOverallConfidence());
+        response.put("recommendations", result.getRecommendations());
+
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/pending")
