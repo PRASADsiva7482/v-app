@@ -58,6 +58,25 @@ public class Post {
     @Builder.Default
     private Integer viewsCount = 0;
 
+    @Column(name = "is_draft", nullable = false)
+    @Builder.Default
+    private Boolean isDraft = false;
+
+    @Column(name = "scheduled_for")
+    private LocalDateTime scheduledFor;
+
+    @Column(name = "co_author_id")
+    private String coAuthorId;
+
+    @Column(name = "latitude")
+    private Double latitude;
+
+    @Column(name = "longitude")
+    private Double longitude;
+
+    @Column(name = "location_name", length = 200)
+    private String locationName;
+
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
@@ -84,4 +103,8 @@ public class Post {
     @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<PostHashtag> postHashtags = new ArrayList<>();
+
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<PostMention> mentions = new ArrayList<>();
 }

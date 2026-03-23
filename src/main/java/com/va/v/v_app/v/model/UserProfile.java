@@ -38,6 +38,9 @@ public class UserProfile {
     @Column(name = "display_name", length = 200)
     private String displayName;
 
+    @Column(name = "nickname", length = 100)
+    private String nickname;
+
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
 
@@ -78,9 +81,20 @@ public class UserProfile {
     @Builder.Default
     private Boolean isVerified = false;
 
+    @Column(name = "verification_tier", length = 20)
+    @Builder.Default
+    private String verificationTier = "NONE"; // NONE, BLUE, GOLD, GREY
+
     @Column(name = "is_private", nullable = false)
     @Builder.Default
     private Boolean isPrivate = false;
+
+    @Column(name = "pinned_post_id")
+    private Long pinnedPostId;
+
+    @Column(name = "is_ghost_mode", nullable = false)
+    @Builder.Default
+    private Boolean isGhostMode = false;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

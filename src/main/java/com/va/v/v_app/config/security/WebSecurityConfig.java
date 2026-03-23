@@ -63,6 +63,8 @@ public class WebSecurityConfig {
                                                                 "/public/**",
                                                                 "/api/v1/media/images/**",
                                                                 "/api/v1/media/videos/**",
+                                                                "/api/v1/media/profile-pictures/**",
+                                                                "/api/v1/chat/media/files/**",
                                                                 "/ws/**"
                                                 // B-14: REMOVED "/api/test/**" — test endpoints
                                                 // should NOT be exposed in production

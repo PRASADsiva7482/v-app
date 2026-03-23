@@ -127,6 +127,18 @@ public class UserSettings {
     @Builder.Default
     private Boolean dataSaver = false;
 
+    @Column(name = "auto_translate")
+    @Builder.Default
+    private Boolean autoTranslate = false;
+
+    @Column(name = "translate_language", length = 10)
+    @Builder.Default
+    private String translateLanguage = "en";
+
+    @Column(name = "chat_encryption")
+    @Builder.Default
+    private Boolean chatEncryption = false;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -23,6 +23,9 @@ public class UpdateProfileRequest {
     @Size(max = 50, message = "Username cannot exceed 50 characters")
     private String username;
 
+    @Size(max = 100, message = "Nickname cannot exceed 100 characters")
+    private String nickname;
+
     @Size(max = 160, message = "Bio cannot exceed 160 characters")
     private String bio;
 
@@ -46,4 +49,7 @@ public class UpdateProfileRequest {
     private String phoneNumber;
 
     private Boolean isPrivate; // Privacy setting
+
+    @Size(max = 20, message = "Verification tier cannot exceed 20 characters")
+    private String verificationTier;
 }

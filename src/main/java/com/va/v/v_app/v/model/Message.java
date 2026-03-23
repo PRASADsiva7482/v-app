@@ -54,6 +54,13 @@ public class Message {
     @Builder.Default
     private Boolean isDeleted = false;
 
+    // Self-destructing messages (Vanish Mode)
+    @Column(name = "self_destruct_seconds")
+    private Integer selfDestructSeconds; // Timer in seconds (e.g., 30, 60, 300)
+
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt; // Calculated: createdAt + selfDestructSeconds
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -71,6 +78,6 @@ public class Message {
     private List<MessageAttachment> attachments = new ArrayList<>();
 
     public enum MessageType {
-        TEXT, IMAGE, VIDEO, AUDIO, FILE, SYSTEM
+        TEXT, IMAGE, VIDEO, AUDIO, FILE, SYSTEM, POLL
     }
 }

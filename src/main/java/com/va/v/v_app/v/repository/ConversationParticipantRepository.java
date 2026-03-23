@@ -21,4 +21,7 @@ public interface ConversationParticipantRepository extends JpaRepository<Convers
     List<String> findActiveUserIdsByConversationId(@Param("conversationId") Long conversationId);
 
     boolean existsByConversationIdAndUserIdAndLeftAtIsNull(Long conversationId, String userId);
+
+    // Account deletion
+    void deleteByUserId(String userId);
 }

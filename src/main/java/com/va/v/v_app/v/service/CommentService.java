@@ -10,6 +10,7 @@ import com.va.v.v_app.v.repository.CommentRepository;
 import com.va.v.v_app.v.repository.PostRepository;
 import com.va.v.v_app.v.exception.ResourceNotFoundException;
 import com.va.v.v_app.v.exception.UnauthorizedException;
+import com.va.v.v_app.v.model.Notification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,6 +35,7 @@ public class CommentService {
     private final CommentLikeRepository commentLikeRepository;
     private final PostRepository postRepository;
     private final UserProfileService userProfileService;
+    private final NotificationService notificationService;
 
     /**
      * Add comment to post
@@ -51,6 +53,8 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
         postRepository.incrementCommentCount(postId);
+
+        notificationService.notifyComment(post.getUserId(), userId, postId, request.getContent());
 
         log.info("Added comment ID: {} to post: {} by user: {}", saved.getId(), postId, userId);
         return mapToResponse(saved, userId);
@@ -74,6 +78,10 @@ public class CommentService {
         Comment saved = commentRepository.save(reply);
         commentRepository.incrementReplyCount(commentId);
         postRepository.incrementCommentCount(parentComment.getPost().getId());
+
+        notificationService.createNotification(parentComment.getUserId(), userId,
+                Notification.NotificationType.REPLY, request.getContent(),
+                parentComment.getPost().getId(), Notification.ReferenceType.POST);
 
         log.info("Added reply ID: {} to comment: {} by user: {}", saved.getId(), commentId, userId);
         return mapToResponse(saved, userId);

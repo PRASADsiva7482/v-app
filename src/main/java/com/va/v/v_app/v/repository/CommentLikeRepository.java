@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -23,4 +24,10 @@ public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> 
     Page<CommentLike> findByCommentId(Long commentId, Pageable pageable);
 
     long countByCommentId(Long commentId);
+
+    // Account deletion
+    void deleteByUserId(String userId);
+
+    // Post deletion - remove all comment likes for given comment IDs
+    void deleteByCommentIdIn(List<Long> commentIds);
 }

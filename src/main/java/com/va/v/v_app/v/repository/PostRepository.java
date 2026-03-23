@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -144,4 +145,47 @@ public interface PostRepository extends JpaRepository<Post, Long> {
 			"ORDER BY p.id DESC")
 	List<Post> findRecentPostsWithCursor(@Param("since") java.time.LocalDateTime since, @Param("cursor") Long cursor,
 			Pageable pageable);
+
+	// Account deletion
+	List<Post> findAllByUserId(String userId);
+
+	void deleteByUserId(String userId);
+
+	// Location-based feed: Haversine formula for nearby posts
+	@Query(value = "SELECT p.id FROM post p WHERE p.is_deleted = 0 AND p.latitude IS NOT NULL " +
+			"AND (6371 * acos(cos(radians(:lat)) * cos(radians(p.latitude)) * " +
+			"cos(radians(p.longitude) - radians(:lng)) + sin(radians(:lat)) * " +
+			"sin(radians(p.latitude)))) < :radiusKm " +
+			"ORDER BY p.created_at DESC LIMIT :lim", nativeQuery = true)
+	List<Long> findNearbyPostIds(@Param("lat") double lat, @Param("lng") double lng,
+			@Param("radiusKm") double radiusKm, @Param("lim") int lim);
+
+	List<Post> findByIdInAndIsDeletedFalse(List<Long> ids);
+
+	// ========== POST SCHEDULER QUERIES ==========
+
+	/**
+	 * Find scheduled posts whose publish time has passed and are still drafts.
+	 * Used by PostSchedulerJob to auto-publish scheduled posts.
+	 */
+	@Query("SELECT p FROM Post p WHERE p.isDraft = true AND p.scheduledFor IS NOT NULL " +
+			"AND p.scheduledFor <= :now AND p.isDeleted = false")
+	List<Post> findScheduledPostsDue(@Param("now") LocalDateTime now);
+
+	/**
+	 * Find stale drafts (older than cutoff) that have no scheduled time.
+	 * Used for cleanup of abandoned drafts.
+	 */
+	@Query("SELECT p FROM Post p WHERE p.isDraft = true AND p.scheduledFor IS NULL " +
+			"AND p.createdAt < :cutoff AND p.isDeleted = false")
+	List<Post> findStaleDrafts(@Param("cutoff") LocalDateTime cutoff);
+
+	// ========== PINNED POST QUERY ==========
+
+	/**
+	 * Find a specific post by ID only if it is not deleted and not a draft.
+	 * Used for pinned post resolution on user profiles.
+	 */
+	@Query("SELECT p FROM Post p WHERE p.id = :postId AND p.isDeleted = false AND p.isDraft = false")
+	java.util.Optional<Post> findPublishedPostById(@Param("postId") Long postId);
 }

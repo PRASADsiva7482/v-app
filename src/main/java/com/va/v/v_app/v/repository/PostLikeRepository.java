@@ -30,4 +30,14 @@ public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
     // Batch loading for multiple posts (prevents N+1 queries)
     @Query("SELECT pl FROM PostLike pl WHERE pl.postId IN :postIds AND pl.userId = :userId")
     List<PostLike> findByPostIdInAndUserId(@Param("postIds") List<Long> postIds, @Param("userId") String userId);
+
+    // Account deletion
+    void deleteByUserId(String userId);
+
+    // Post deletion - remove all likes for a post
+    void deleteByPostId(Long postId);
+
+    // Analytics: count total likes received on all posts by a user
+    @Query("SELECT COUNT(pl) FROM PostLike pl WHERE pl.postId IN (SELECT p.id FROM Post p WHERE p.userId = :userId AND p.isDeleted = false)")
+    long countLikesByPostOwner(@Param("userId") String userId);
 }

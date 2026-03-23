@@ -177,4 +177,100 @@ public class ConversationService {
 
                 return builder.build();
         }
+
+        /**
+         * Create a GROUP conversation with multiple participants.
+         */
+        @Transactional
+        public ConversationResponse createGroupConversation(String currentUserId, StartConversationRequest request) {
+                Conversation conversation = Conversation.builder()
+                                .type(Conversation.ConversationType.GROUP)
+                                .groupName(request.getGroupName() != null ? request.getGroupName() : "Group Chat")
+                                .groupAvatarUrl(request.getGroupAvatarUrl())
+                                .createdBy(currentUserId)
+                                .participants(new ArrayList<>())
+                                .build();
+                conversation = conversationRepository.save(conversation);
+
+                // Add creator as OWNER
+                ConversationParticipant owner = ConversationParticipant.builder()
+                                .conversation(conversation)
+                                .userId(currentUserId)
+                                .role(ConversationParticipant.ParticipantRole.OWNER)
+                                .build();
+                participantRepository.save(owner);
+                conversation.getParticipants().add(owner);
+
+                // Add other participants
+                if (request.getParticipantIds() != null) {
+                        for (String memberId : request.getParticipantIds()) {
+                                if (!memberId.equals(currentUserId)) {
+                                        ConversationParticipant member = ConversationParticipant.builder()
+                                                        .conversation(conversation)
+                                                        .userId(memberId)
+                                                        .role(ConversationParticipant.ParticipantRole.MEMBER)
+                                                        .build();
+                                        participantRepository.save(member);
+                                        conversation.getParticipants().add(member);
+                                }
+                        }
+                }
+
+                log.info("New GROUP conversation created: id={}, name={}, members={}",
+                                conversation.getId(), conversation.getGroupName(),
+                                conversation.getParticipants().size());
+
+                return toConversationResponse(conversation, currentUserId);
+        }
+
+        /**
+         * Add a member to a GROUP conversation.
+         */
+        @Transactional
+        public ConversationResponse addGroupMember(Long conversationId, String requesterId, String newMemberId) {
+                Conversation conversation = conversationRepository.findById(conversationId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Conversation", "id", conversationId));
+
+                if (conversation.getType() != Conversation.ConversationType.GROUP) {
+                        throw new BusinessException("NOT_GROUP", "Can only add members to group conversations");
+                }
+
+                // Check requester is a participant
+                if (!participantRepository.existsByConversationIdAndUserIdAndLeftAtIsNull(conversationId, requesterId)) {
+                        throw new UnauthorizedException("You are not a participant of this conversation");
+                }
+
+                // Check if already a member
+                if (participantRepository.existsByConversationIdAndUserIdAndLeftAtIsNull(conversationId, newMemberId)) {
+                        throw new BusinessException("ALREADY_MEMBER", "User is already a member of this group");
+                }
+
+                ConversationParticipant member = ConversationParticipant.builder()
+                                .conversation(conversation)
+                                .userId(newMemberId)
+                                .role(ConversationParticipant.ParticipantRole.MEMBER)
+                                .build();
+                participantRepository.save(member);
+
+                return toConversationResponse(conversation, requesterId);
+        }
+
+        /**
+         * Remove a member from a GROUP conversation.
+         */
+        @Transactional
+        public void removeGroupMember(Long conversationId, String requesterId, String memberId) {
+                Conversation conversation = conversationRepository.findById(conversationId)
+                                .orElseThrow(() -> new ResourceNotFoundException("Conversation", "id", conversationId));
+
+                if (conversation.getType() != Conversation.ConversationType.GROUP) {
+                        throw new BusinessException("NOT_GROUP", "Can only remove members from group conversations");
+                }
+
+                participantRepository.findByConversationIdAndUserId(conversationId, memberId)
+                                .ifPresent(p -> {
+                                        p.setLeftAt(java.time.LocalDateTime.now());
+                                        participantRepository.save(p);
+                                });
+        }
 }

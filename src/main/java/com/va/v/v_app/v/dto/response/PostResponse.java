@@ -32,8 +32,17 @@ public class PostResponse {
     private UserProfileResponse author;
     private List<MediaResponse> media;
     private List<HashtagResponse> hashtags;
+    private List<String> mentionedUserIds;
 
     // User-specific fields
     private Boolean isLiked; // True if current user liked this post
     private Boolean isOwnPost; // True if current user is the author
+    private Boolean isEditable; // True if the post is within the edit/delete time window for the author
+    private Boolean isBookmarked; // True if current user bookmarked this post
+
+    // Poll data (if the post has a poll)
+    private PollResponse poll;
+
+    private Boolean isDraft;
+    private LocalDateTime scheduledFor;
 }

@@ -9,6 +9,8 @@ import com.va.v.v_app.v.model.UserProfile;
 import com.va.v.v_app.v.repository.NotificationRepository;
 import com.va.v.v_app.v.repository.PostRepository;
 import com.va.v.v_app.v.repository.UserProfileRepository;
+import com.va.v.v_app.v.repository.FollowRepository;
+import com.va.v.v_app.v.dto.UserSettingsDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -33,6 +35,8 @@ public class NotificationService {
     private final NotificationRepository notificationRepository;
     private final UserProfileRepository userProfileRepository;
     private final PostRepository postRepository;
+    private final FollowRepository followRepository;
+    private final UserSettingsService userSettingsService;
 
     /**
      * Create a notification (prevents duplicates for same sender+type+reference)
@@ -55,6 +59,34 @@ public class NotificationService {
             if (exists) {
                 log.debug("Duplicate notification skipped: {} -> {} type={}", senderId, recipientId, type);
                 return null;
+            }
+        }
+
+        // Apply notification filters based on user settings
+        if (recipientId != null && senderId != null) {
+            UserSettingsDto settings = userSettingsService.getUserSettings(recipientId);
+
+            // Mute accounts not following
+            if (Boolean.TRUE.equals(settings.getMuteAccountsNotFollowing())) {
+                boolean isFollowing = followRepository.existsByFollowerIdAndFollowingId(recipientId, senderId);
+                if (!isFollowing) {
+                    log.debug("Notification skipped due to settings (muteAccountsNotFollowing): {} -> {}", senderId,
+                            recipientId);
+                    return null;
+                }
+            }
+
+            // Mute new accounts
+            if (Boolean.TRUE.equals(settings.getMuteAccountsNew())) {
+                UserProfile senderProfile = userProfileRepository.findByUserId(senderId).orElse(null);
+                if (senderProfile != null && senderProfile.getCreatedAt() != null) {
+                    // Treat accounts created in the last 7 days as new
+                    if (senderProfile.getCreatedAt().isAfter(java.time.LocalDateTime.now().minusDays(7))) {
+                        log.debug("Notification skipped due to settings (muteAccountsNew): {} -> {}", senderId,
+                                recipientId);
+                        return null;
+                    }
+                }
             }
         }
 
@@ -107,7 +139,7 @@ public class NotificationService {
     public Page<NotificationResponse> getMentions(String userId, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         Page<Notification> notifications = notificationRepository
-                .findMentionsByRecipientId(userId, pageable);
+                .findByRecipientIdAndTypeOrderByCreatedAtDesc(userId, NotificationType.MENTION, pageable);
 
         return enrichNotificationsPage(notifications);
     }

@@ -37,4 +37,7 @@ public interface UserProfileRepository extends JpaRepository<UserProfile, Long> 
     // For You Feed - Find recently created users
     @Query("SELECT u FROM UserProfile u WHERE u.createdAt >= :since ORDER BY u.createdAt DESC")
     List<UserProfile> findRecentUsers(@Param("since") java.time.LocalDateTime since);
+
+    // Account deletion
+    void deleteByUserId(String userId);
 }
