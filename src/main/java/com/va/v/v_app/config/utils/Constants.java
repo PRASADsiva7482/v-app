@@ -2,7 +2,7 @@ package com.va.v.v_app.config.utils;
 
 public interface Constants {
 
-	final String jwt_secret = "javainuse";
+	// REMOVED: jwt_secret was hardcoded here — use jwt.secret from application.properties instead
 
 	Integer SUCCESS = 0;
 	Integer GENERAL_FAILURE = 1;

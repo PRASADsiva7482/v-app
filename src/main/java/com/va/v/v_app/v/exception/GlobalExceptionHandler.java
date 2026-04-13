@@ -4,18 +4,27 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Global Exception Handler (B-1).
- * Catches all exceptions thrown across controllers and returns
- * consistent, structured error responses instead of stack traces.
+ * Global Exception Handler — HARDENED.
+ *
+ * Security rules enforced:
+ *   ✅ NEVER expose stack traces, class names, or internal paths
+ *   ✅ NEVER reveal database, table, or column names
+ *   ✅ NEVER reveal server technology or framework versions
+ *   ✅ All unexpected exceptions return a generic message
+ *   ✅ All exceptions are logged server-side for debugging
  */
 @Slf4j
 @RestControllerAdvice
@@ -27,16 +36,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> handleResourceNotFound(ResourceNotFoundException ex) {
         log.warn("Resource not found: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.NOT_FOUND, ex.getMessage(), "RESOURCE_NOT_FOUND");
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "The requested resource was not found.", "RESOURCE_NOT_FOUND");
     }
 
     /**
      * Handle BusinessException → 400
+     * Only expose the business-friendly message, never internal details
      */
     @ExceptionHandler(BusinessException.class)
     public ResponseEntity<Map<String, Object>> handleBusinessException(BusinessException ex) {
         log.warn("Business rule violation: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), ex.getErrorCode());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, sanitizeMessage(ex.getMessage()), ex.getErrorCode());
     }
 
     /**
@@ -45,11 +55,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<Map<String, Object>> handleUnauthorized(UnauthorizedException ex) {
         log.warn("Unauthorized access: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.FORBIDDEN, ex.getMessage(), "FORBIDDEN");
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "You do not have permission to access this resource.", "FORBIDDEN");
     }
 
     /**
-     * Handle Jakarta Bean Validation errors → 400 (B-7)
+     * Handle Jakarta Bean Validation errors → 400
+     * Only expose field names and validation messages (safe)
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> handleValidationErrors(MethodArgumentNotValidException ex) {
@@ -75,16 +86,65 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         log.warn("Illegal argument: {}", ex.getMessage());
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, ex.getMessage(), "BAD_REQUEST");
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Invalid request parameters.", "BAD_REQUEST");
     }
 
     /**
-     * Catch-all for unexpected exceptions → 500
-     * Prevents stack traces from leaking to clients.
+     * Handle missing request parameters → 400
+     */
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<Map<String, Object>> handleMissingParam(MissingServletRequestParameterException ex) {
+        log.warn("Missing parameter: {}", ex.getParameterName());
+        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Required parameter is missing.", "BAD_REQUEST");
+    }
+
+    /**
+     * Handle unsupported HTTP methods → 405
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<Map<String, Object>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+        log.warn("Method not supported: {}", ex.getMethod());
+        return buildErrorResponse(HttpStatus.METHOD_NOT_ALLOWED, "This HTTP method is not supported for this endpoint.", "METHOD_NOT_ALLOWED");
+    }
+
+    /**
+     * Handle file upload size exceeded → 413
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSize(MaxUploadSizeExceededException ex) {
+        log.warn("File upload size exceeded: {}", ex.getMessage());
+        return buildErrorResponse(HttpStatus.PAYLOAD_TOO_LARGE, "File size exceeds the allowed limit.", "FILE_TOO_LARGE");
+    }
+
+    /**
+     * Handle 404 for unknown endpoints → prevents path enumeration
+     */
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleNoHandlerFound(NoHandlerFoundException ex) {
+        log.warn("No handler found for: {} {}", ex.getHttpMethod(), ex.getRequestURL());
+        return buildErrorResponse(HttpStatus.NOT_FOUND, "The requested endpoint does not exist.", "NOT_FOUND");
+    }
+
+    /**
+     * ★ CATCH-ALL for unexpected exceptions → 500
+     *
+     * CRITICAL: This is the most important handler for security.
+     * It ensures that NO internal details ever reach the client.
+     *
+     * Common things this catches and hides:
+     *   - SQL errors (table/column names)
+     *   - NullPointerExceptions
+     *   - ClassNotFound / NoSuchMethod
+     *   - File system paths
+     *   - Connection strings
+     *   - Stack traces
      */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> handleGenericException(Exception ex) {
-        log.error("Unexpected error occurred", ex);
+        // Log the FULL exception server-side for debugging
+        log.error("Unhandled exception caught by GlobalExceptionHandler", ex);
+
+        // Return GENERIC message to client — reveal nothing
         return buildErrorResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "An unexpected error occurred. Please try again later.",
@@ -92,7 +152,8 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Build consistent error response structure
+     * Build consistent error response structure.
+     * Never includes server name, path, class names, or stack traces.
      */
     private ResponseEntity<Map<String, Object>> buildErrorResponse(
             HttpStatus status, String message, String code) {
@@ -102,6 +163,26 @@ public class GlobalExceptionHandler {
         body.put("code", code);
         body.put("status", status.value());
         body.put("timestamp", LocalDateTime.now().toString());
+        // INTENTIONALLY no "path", "trace", "exception" fields
         return ResponseEntity.status(status).body(body);
+    }
+
+    /**
+     * Sanitize exception messages to prevent info leakage.
+     * Strips anything that looks like internal detail.
+     */
+    private String sanitizeMessage(String message) {
+        if (message == null) return "An error occurred.";
+
+        // Strip common internal info patterns
+        if (message.contains("SQL") || message.contains("jdbc") ||
+            message.contains("Hibernate") || message.contains("EntityManager") ||
+            message.contains("NullPointer") || message.contains("ClassNotFound") ||
+            message.contains("java.") || message.contains("org.springframework") ||
+            message.contains("com.va.v")) {
+            return "An error occurred while processing your request.";
+        }
+
+        return message;
     }
 }

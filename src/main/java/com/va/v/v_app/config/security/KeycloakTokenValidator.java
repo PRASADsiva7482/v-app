@@ -44,12 +44,9 @@ public class KeycloakTokenValidator {
      */
     public KeycloakAccessToken validateToken(String token) {
         if (!keycloakEnabled) {
-            log.debug("Keycloak validation is disabled");
-            // Return a mock token when Keycloak is disabled
-            KeycloakAccessToken mockToken = new KeycloakAccessToken();
-            mockToken.setActive("true");
-            mockToken.setUsername("unauthenticated-user");
-            return mockToken;
+            log.error("SECURITY: Keycloak validation is disabled! This must NEVER happen in production.");
+            // Do NOT return a mock token — reject the request
+            return null;
         }
 
         if (StringUtils.isEmpty(token)) {

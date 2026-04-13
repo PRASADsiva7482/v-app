@@ -50,6 +50,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	@Autowired
 	RequestProcessingTimeInterceptor logInterceptor;
 
+	@Autowired
+	com.va.v.v_app.config.security.RateLimitingInterceptor rateLimitingInterceptor;
+
 	@Override
 	public void addArgumentResolvers(List<HandlerMethodArgumentResolver> argumentResolvers) {
 		argumentResolvers.add(new SpecificationArgumentResolver());
@@ -81,6 +84,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 	@Override
 	public void addInterceptors(InterceptorRegistry registry) {
 		registry.addInterceptor(logInterceptor);
+		registry.addInterceptor(rateLimitingInterceptor);
 	}
 
 	@Override

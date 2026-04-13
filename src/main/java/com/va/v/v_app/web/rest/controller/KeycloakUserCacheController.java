@@ -53,7 +53,7 @@ public class KeycloakUserCacheController {
 
         } catch (Exception e) {
             log.error("Error fetching users from cache", e);
-            return new ResponseEntity<>("Error fetching users: " + e.getMessage(),
+            return new ResponseEntity<>("An internal error occurred.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -88,7 +88,7 @@ public class KeycloakUserCacheController {
 
         } catch (Exception e) {
             log.error("Error refreshing cache", e);
-            return new ResponseEntity<>("Error refreshing cache: " + e.getMessage(),
+            return new ResponseEntity<>("An internal error occurred.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -112,7 +112,7 @@ public class KeycloakUserCacheController {
 
         } catch (Exception e) {
             log.error("Error getting cache statistics", e);
-            return new ResponseEntity<>("Error getting cache stats: " + e.getMessage(),
+            return new ResponseEntity<>("An internal error occurred.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }
@@ -132,7 +132,7 @@ public class KeycloakUserCacheController {
 
         } catch (Exception e) {
             log.error("Error clearing and reloading cache", e);
-            return new ResponseEntity<>("Error clearing cache: " + e.getMessage(),
+            return new ResponseEntity<>("An internal error occurred.",
                     HttpStatus.INTERNAL_SERVER_ERROR);
         }
     }

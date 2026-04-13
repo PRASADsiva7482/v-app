@@ -21,11 +21,13 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Intercept WebSocket CONNECT frames to authenticate via JWT token.
- * The token is passed as a STOMP header: Authorization: Bearer xxx
+ * WebSocket STOMP authentication interceptor — HARDENED.
  *
- * The principal name is set to the Keycloak preferred_username (same as
- * what the REST JwtRequestFilter uses in SecurityContext).
+ * Security enforcement:
+ *   ✅ Requires valid JWT on CONNECT (rejects unauthenticated)
+ *   ✅ No static secrets (removed X-V2-App-Secret — visible in DevTools)
+ *   ✅ WebSocket origin is already restricted in WebSocketConfig
+ *   ✅ Connection rejected outright if no valid token
  */
 @Slf4j
 @Configuration
@@ -45,36 +47,41 @@ public class WebSocketAuthInterceptor implements WebSocketMessageBrokerConfigure
                 if (accessor != null && StompCommand.CONNECT.equals(accessor.getCommand())) {
                     String token = extractToken(accessor);
 
-                    if (token != null) {
-                        try {
-                            KeycloakAccessToken tokenDetails = keycloakTokenValidator.validateToken(token);
+                    if (token == null) {
+                        log.warn("WebSocket CONNECT rejected: no token provided");
+                        return null; // Reject connection
+                    }
 
-                            if (tokenDetails != null && "true".equalsIgnoreCase(tokenDetails.getActive())) {
-                                // Use same principal resolution as JwtRequestFilter
-                                String username = tokenDetails.getPreferred_username();
-                                if (username == null || username.isEmpty()) {
-                                    username = tokenDetails.getUsername();
-                                }
-                                if (username == null || username.isEmpty()) {
-                                    username = tokenDetails.getSub();
-                                }
+                    try {
+                        KeycloakAccessToken tokenDetails = keycloakTokenValidator.validateToken(token);
 
-                                if (username != null && !username.isEmpty()) {
-                                    UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
-                                            username, null, Collections.emptyList());
-                                    accessor.setUser(auth);
-                                    log.info("WebSocket CONNECT authenticated: user={}", username);
-                                } else {
-                                    log.warn("WebSocket CONNECT: could not extract username from token");
-                                }
-                            } else {
-                                log.warn("WebSocket CONNECT: token validation failed or inactive");
-                            }
-                        } catch (Exception e) {
-                            log.error("WebSocket CONNECT authentication failed: {}", e.getMessage());
+                        if (tokenDetails == null || !"true".equalsIgnoreCase(tokenDetails.getActive())) {
+                            log.warn("WebSocket CONNECT rejected: invalid or expired token");
+                            return null; // Reject connection
                         }
-                    } else {
-                        log.warn("WebSocket CONNECT: no token found in headers");
+
+                        // Extract username (same resolution as JwtRequestFilter)
+                        String username = tokenDetails.getPreferred_username();
+                        if (username == null || username.isEmpty()) {
+                            username = tokenDetails.getUsername();
+                        }
+                        if (username == null || username.isEmpty()) {
+                            username = tokenDetails.getSub();
+                        }
+
+                        if (username == null || username.isEmpty()) {
+                            log.warn("WebSocket CONNECT rejected: could not extract username");
+                            return null; // Reject connection
+                        }
+
+                        UsernamePasswordAuthenticationToken auth = new UsernamePasswordAuthenticationToken(
+                                username, null, Collections.emptyList());
+                        accessor.setUser(auth);
+                        log.info("WebSocket CONNECT authenticated: user={}", username);
+
+                    } catch (Exception e) {
+                        log.error("WebSocket CONNECT authentication failed");
+                        return null; // Reject connection — don't log e.getMessage()
                     }
                 }
 

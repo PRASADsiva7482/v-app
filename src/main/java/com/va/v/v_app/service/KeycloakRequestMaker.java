@@ -83,7 +83,7 @@ public class KeycloakRequestMaker {
 
         } catch (Exception e) {
             log.error("Error during Keycloak authentication", e);
-            throw new RuntimeException("Unable to authenticate user: " + e.getMessage(), e);
+            throw new RuntimeException("Authentication service unavailable", e);
         }
     }
 
@@ -137,7 +137,7 @@ public class KeycloakRequestMaker {
 
         } catch (Exception e) {
             log.error("Error during token validation", e);
-            throw new RuntimeException("Unable to validate token: " + e.getMessage(), e);
+            throw new RuntimeException("Token validation service unavailable", e);
         }
     }
 }
