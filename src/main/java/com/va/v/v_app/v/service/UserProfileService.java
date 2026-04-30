@@ -478,31 +478,53 @@ public class UserProfileService {
     }
 
     /**
-     * Map entity to response DTO
+     * Map entity to response DTO with private profile data redaction.
+     * 
+     * When viewing a private profile (not own, not following):
+     * - Shows: display name, username, bio (limited), profile picture, counts, private badge
+     * - Hides: about, phone, website, date of birth, pinned post
+     * - Sets isProfileRestricted = true
      */
     private UserProfileResponse mapToResponse(UserProfile profile, String currentUserId) {
         boolean isOwnProfile = currentUserId != null && currentUserId.equals(profile.getUserId());
         boolean isFollowing = false;
+        boolean isFollowedBy = false;
+        boolean isFollowRequestPending = false;
+
         if (currentUserId != null && !isOwnProfile) {
-            isFollowing = followRepository.existsByFollowerIdAndFollowingId(currentUserId, profile.getUserId());
-            log.debug("Follow check: follower={}, following={}, result={}", currentUserId, profile.getUserId(),
-                    isFollowing);
+            isFollowing = followRepository.existsByFollowerIdAndFollowingIdAndStatus(
+                    currentUserId, profile.getUserId(), 
+                    com.va.v.v_app.v.model.Follow.FollowStatus.ACCEPTED);
+            isFollowedBy = followRepository.existsByFollowerIdAndFollowingIdAndStatus(
+                    profile.getUserId(), currentUserId,
+                    com.va.v.v_app.v.model.Follow.FollowStatus.ACCEPTED);
+            isFollowRequestPending = followRepository.existsByFollowerIdAndFollowingIdAndStatus(
+                    currentUserId, profile.getUserId(),
+                    com.va.v.v_app.v.model.Follow.FollowStatus.PENDING);
+            log.debug("Follow check: follower={}, following={}, accepted={}, pending={}", 
+                    currentUserId, profile.getUserId(), isFollowing, isFollowRequestPending);
         }
 
-        return UserProfileResponse.builder()
+        // Determine if profile data should be restricted
+        boolean isPrivateProfile = Boolean.TRUE.equals(profile.getIsPrivate());
+        boolean isProfileRestricted = isPrivateProfile && !isOwnProfile && !isFollowing;
+
+        // Count pending follow requests (only for own profile)
+        Long pendingCount = null;
+        if (isOwnProfile && isPrivateProfile) {
+            pendingCount = followRepository.countByFollowingIdAndStatus(
+                    profile.getUserId(), com.va.v.v_app.v.model.Follow.FollowStatus.PENDING);
+        }
+
+        UserProfileResponse.UserProfileResponseBuilder builder = UserProfileResponse.builder()
                 .id(profile.getId())
                 .userId(profile.getUserId())
                 .username(profile.getUsername())
                 .displayName(profile.getDisplayName())
                 .nickname(profile.getNickname())
-                .bio(profile.getBio())
-                .about(profile.getAbout())
-                .profilePictureUrl(profile.getProfilePictureUrl())
+                .bio(profile.getBio()) // Bio is always visible (like Instagram)
+                .profilePictureUrl(profile.getProfilePictureUrl()) // Profile pic always visible
                 .coverPhotoUrl(profile.getCoverPhotoUrl())
-                .location(profile.getLocation())
-                .website(profile.getWebsite())
-                .dateOfBirth(profile.getDateOfBirth())
-                .phoneNumber(profile.getPhoneNumber())
                 .isVerified(profile.getIsVerified())
                 .verificationTier(profile.getVerificationTier() != null ? profile.getVerificationTier() : "NONE")
                 .isPrivate(profile.getIsPrivate())
@@ -513,8 +535,23 @@ public class UserProfileService {
                 .updatedAt(profile.getUpdatedAt())
                 .isOwnProfile(isOwnProfile)
                 .isFollowing(isFollowing)
-                .pinnedPostId(profile.getPinnedPostId())
-                .build();
+                .isFollowedBy(isFollowedBy)
+                .isFollowRequestPending(isFollowRequestPending)
+                .isProfileRestricted(isProfileRestricted)
+                .pendingFollowRequestsCount(pendingCount);
+
+        // Only include sensitive data if profile is NOT restricted
+        if (!isProfileRestricted) {
+            builder.about(profile.getAbout())
+                   .location(profile.getLocation())
+                   .website(profile.getWebsite())
+                   .dateOfBirth(profile.getDateOfBirth())
+                   .phoneNumber(profile.getPhoneNumber())
+                   .pinnedPostId(profile.getPinnedPostId());
+        }
+        // When restricted: about, location, website, dateOfBirth, phoneNumber, pinnedPostId remain null
+
+        return builder.build();
     }
 
     /**
@@ -525,3 +562,4 @@ public class UserProfileService {
         return mapToResponse(profile, null);
     }
 }
+

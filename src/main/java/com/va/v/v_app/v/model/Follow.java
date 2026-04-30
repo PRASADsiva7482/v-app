@@ -10,7 +10,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 /**
- * Entity representing follow relationship between users
+ * Entity representing follow relationship between users.
+ * Supports follow requests for private profiles via the status field.
  */
 @Entity
 @Table(name = "follow", uniqueConstraints = {
@@ -18,7 +19,9 @@ import java.time.LocalDateTime;
 }, indexes = {
         @Index(name = "idx_follower_id", columnList = "follower_id"),
         @Index(name = "idx_following_id", columnList = "following_id"),
-        @Index(name = "idx_created_at", columnList = "created_at")
+        @Index(name = "idx_created_at", columnList = "created_at"),
+        @Index(name = "idx_follow_status", columnList = "status"),
+        @Index(name = "idx_following_status", columnList = "following_id, status")
 })
 @Data
 @Builder
@@ -36,7 +39,24 @@ public class Follow {
     @Column(name = "following_id", nullable = false)
     private String followingId; // User being followed
 
+    @Column(name = "status", nullable = false, length = 20)
+    @Enumerated(EnumType.STRING)
+    @Builder.Default
+    private FollowStatus status = FollowStatus.ACCEPTED;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /**
+     * Status of a follow relationship.
+     * PENDING  – follow request sent to a private account, awaiting approval
+     * ACCEPTED – follow is active (auto for public accounts, manual approve for private)
+     * DECLINED – follow request was declined by the private account owner
+     */
+    public enum FollowStatus {
+        PENDING,
+        ACCEPTED,
+        DECLINED
+    }
 }

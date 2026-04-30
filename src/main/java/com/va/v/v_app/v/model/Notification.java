@@ -70,12 +70,14 @@ public class Notification {
     private LocalDateTime updatedAt;
 
     /**
-     * Notification types matching X/Twitter
+     * Notification types matching X/Twitter + Instagram private profile support
      */
     public enum NotificationType {
         LIKE,
         COMMENT,
         FOLLOW,
+        FOLLOW_REQUEST,
+        FOLLOW_ACCEPT,
         MENTION,
         REPOST,
         REPLY,

@@ -215,6 +215,18 @@ public class NotificationService {
     }
 
     @Transactional
+    public void notifyFollowRequest(String recipientId, String senderId) {
+        createNotification(recipientId, senderId, NotificationType.FOLLOW_REQUEST,
+                null, null, ReferenceType.USER);
+    }
+
+    @Transactional
+    public void notifyFollowAccept(String recipientId, String senderId) {
+        createNotification(recipientId, senderId, NotificationType.FOLLOW_ACCEPT,
+                null, null, ReferenceType.USER);
+    }
+
+    @Transactional
     public void notifyMention(String recipientId, String senderId, Long postId) {
         createNotification(recipientId, senderId, NotificationType.MENTION,
                 null, postId, ReferenceType.POST);

@@ -34,6 +34,7 @@ public class ConversationService {
         private final MessageRepository messageRepository;
         private final UserProfileRepository userProfileRepository;
         private final WebSocketSessionRegistry sessionRegistry;
+        private final FollowRepository followRepository;
 
         /**
          * Get all conversations for the current user.
@@ -64,6 +65,24 @@ public class ConversationService {
                                 .findDirectConversation(currentUserId, recipientId);
                 if (existing.isPresent()) {
                         return toConversationResponse(existing.get(), currentUserId);
+                }
+
+                // Privacy check: if recipient is private, require mutual following
+                com.va.v.v_app.v.model.UserProfile recipientProfile = userProfileRepository
+                                .findByUserId(recipientId).orElse(null);
+                if (recipientProfile != null && Boolean.TRUE.equals(recipientProfile.getIsPrivate())) {
+                        boolean currentFollowsRecipient = followRepository
+                                        .existsByFollowerIdAndFollowingIdAndStatus(
+                                                        currentUserId, recipientId,
+                                                        com.va.v.v_app.v.model.Follow.FollowStatus.ACCEPTED);
+                        boolean recipientFollowsCurrent = followRepository
+                                        .existsByFollowerIdAndFollowingIdAndStatus(
+                                                        recipientId, currentUserId,
+                                                        com.va.v.v_app.v.model.Follow.FollowStatus.ACCEPTED);
+                        if (!currentFollowsRecipient || !recipientFollowsCurrent) {
+                                throw new BusinessException("PRIVATE_ACCOUNT",
+                                                "Cannot message this user. Both users must follow each other to start a conversation with a private account.");
+                        }
                 }
 
                 // Create new conversation

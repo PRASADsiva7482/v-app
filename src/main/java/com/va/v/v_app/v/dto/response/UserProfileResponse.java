@@ -42,4 +42,10 @@ public class UserProfileResponse {
     private Boolean isFollowing; // Set to true if current user follows this profile
     private Boolean isOwnProfile; // Set to true if this is the current user's profile
     private Long pinnedPostId; // ID of the post pinned to the top of this profile
+
+    // Private profile support fields
+    private Boolean isFollowRequestPending; // True if current user has sent a pending follow request
+    private Boolean isProfileRestricted; // True if this is a private profile and current user can't see full data
+    private Boolean isFollowedBy; // True if this profile's owner follows the current user
+    private Long pendingFollowRequestsCount; // Count of pending requests (only for own profile)
 }
