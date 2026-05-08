@@ -1,2 +1,2 @@
 org.springframework.context.ApplicationContextInitializer=\
-com.va.v.v_app.config.DotenvConfig
+com.va.v.v_app.core.config.DotenvConfig

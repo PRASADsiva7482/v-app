@@ -94,14 +94,14 @@
         </AsyncLogger>
         
         <!-- Keycloak Integration Logs -->
-        <AsyncLogger name="com.va.v.v_app.service.KeycloakRequestMaker" level="debug" includeLocation="true" additivity="false">
+        <AsyncLogger name="com.va.v.v_app.iam.service.KeycloakRequestMaker" level="debug" includeLocation="true" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
             <AppenderRef ref="AuditLogFile"/>
         </AsyncLogger>
         
         <!-- Login/Authentication Logs -->
-        <AsyncLogger name="com.va.v.v_app.web.rest.controller.LoginController" level="info" includeLocation="true" additivity="false">
+        <AsyncLogger name="com.va.v.v_app.iam.api.LoginController" level="info" includeLocation="true" additivity="false">
             <AppenderRef ref="Console"/>
             <AppenderRef ref="AppLogFile"/>
             <AppenderRef ref="AuditLogFile"/>
